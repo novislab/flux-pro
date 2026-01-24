@@ -1828,11 +1828,18 @@ function lockScroll(el = null, allowScroll = false, except = []) {
   } };
   let applyDocumentLockStyles = (disablePointerEvents = false) => {
     undoLockStyles(document.documentElement);
-    setLockStyles(document.documentElement, {
-      paddingRight: `calc(${window.innerWidth - document.documentElement.clientWidth}px + ${window.getComputedStyle(document.documentElement).paddingRight})`,
+    let lockStyles = {
       overflow: "hidden",
       ...disablePointerEvents ? { pointerEvents: "none" } : {}
-    });
+    };
+    if (window.CSS && CSS.supports && CSS.supports("scrollbar-gutter: stable")) {
+      if (document.documentElement.scrollHeight > document.documentElement.clientHeight && window.getComputedStyle(document.documentElement).overflowY !== "hidden") {
+        lockStyles.scrollbarGutter = "stable";
+      }
+    } else {
+      lockStyles.paddingRight = `calc(${window.innerWidth - document.documentElement.clientWidth}px + ${window.getComputedStyle(document.documentElement).paddingRight})`;
+    }
+    setLockStyles(document.documentElement, lockStyles);
     if (disablePointerEvents) {
       setAttribute2(el, "data-flux-allow-scroll", "");
       except.forEach((el2) => {
@@ -1883,6 +1890,13 @@ function undoLockStyles(element2) {
     element2.style[style] = value3;
   });
   element2.removeAttribute(`data-flux-scroll-unlock`);
+}
+function setStyle(element2, style, value3) {
+  let currentValue = element2.style[style];
+  element2.style[style] = value3;
+  return () => {
+    element2.style[style] = currentValue;
+  };
 }
 function initFauxButton(el, isDisabled, action) {
   let ifKey = (key, callback) => (e) => {
@@ -1984,545 +1998,6 @@ var Observable = class {
     });
   }
 };
-
-// js/calendar/date.js
-var DateValue = class _DateValue {
-  constructor(year, month, day = 1) {
-    this._date = new Date(Date.UTC(year, month - 1, day));
-  }
-  isBetween(min2, max2) {
-    if (!min2 && !max2) return true;
-    if (!min2) return this._date <= max2._date;
-    if (!max2) return this._date >= min2._date;
-    return this._date >= min2._date && this._date <= max2._date;
-  }
-  isSameDay(date) {
-    if (!date) return false;
-    return this._date.getUTCDate() === date._date.getUTCDate() && this._date.getUTCMonth() === date._date.getUTCMonth() && this._date.getUTCFullYear() === date._date.getUTCFullYear();
-  }
-  isBefore(date) {
-    if (!date) return false;
-    return this._date < date._date;
-  }
-  isAfter(date) {
-    if (!date) return false;
-    return this._date > date._date;
-  }
-  /** Immutable manipulators */
-  incrementDays(days) {
-    let copy = this.getCopy();
-    copy._date.setUTCDate(copy._date.getUTCDate() + days);
-    return copy;
-  }
-  addMonths(months) {
-    let copy = this.getCopy();
-    copy._date.setUTCMonth(copy._date.getUTCMonth() + months);
-    return copy;
-  }
-  addDays(days) {
-    let copy = this.getCopy();
-    copy._date.setUTCDate(copy._date.getUTCDate() + days);
-    return copy;
-  }
-  /** Getters */
-  getYear() {
-    return this._date.getUTCFullYear();
-  }
-  getMonth() {
-    return this._date.getUTCMonth() + 1;
-  }
-  getPaddedMonth() {
-    return String(this.getMonth()).padStart(2, "0");
-  }
-  getDay() {
-    return this._date.getUTCDate();
-  }
-  getPaddedDay() {
-    return String(this.getDay()).padStart(2, "0");
-  }
-  getDate() {
-    return this._date;
-  }
-  getCopy() {
-    return new _DateValue(this.getYear(), this.getMonth(), this.getDay());
-  }
-  getDayOfWeek() {
-    return this._date.getUTCDay();
-  }
-  getDaysInMonth() {
-    return new _DateValue(this.getYear(), this.getMonth() + 1, 0).getDay();
-  }
-  getFirstDayOfMonth() {
-    return new _DateValue(this.getYear(), this.getMonth(), 1).getDayOfWeek();
-  }
-  getWeekNumber() {
-    let firstDayOfYear = new Date(Date.UTC(this._date.getUTCFullYear(), 0, 1));
-    let firstThursday = new Date(firstDayOfYear);
-    firstThursday.setUTCDate(1 + (11 - firstDayOfYear.getUTCDay()) % 7);
-    let targetThursday = new Date(this._date);
-    targetThursday.setUTCDate(this._date.getUTCDate() + (11 - this._date.getUTCDay()) % 7);
-    let weeksBetween = Math.floor((targetThursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1e3));
-    return weeksBetween + 1;
-  }
-  /** Setters */
-  setDay(day) {
-    this._date.setUTCDate(day);
-  }
-  setMonth(month) {
-    this._date.setUTCMonth(month - 1);
-  }
-  setYear(year) {
-    this._date.setUTCFullYear(year);
-  }
-  /** Static factories: */
-  static fromIsoDateString(isoString) {
-    if (!isoString) return null;
-    let [year, month, day] = isoString.split("T")[0]?.split("-")?.map(Number);
-    return new _DateValue(year, month, day);
-  }
-  static fromLocalDate(date) {
-    if (!date) return null;
-    return new _DateValue(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
-  }
-  static fromDate(date) {
-    if (!date) return null;
-    return new _DateValue(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  }
-  static fromParts(year, month, day) {
-    return new _DateValue(year, month, day);
-  }
-  static today() {
-    return _DateValue.fromDate(/* @__PURE__ */ new Date());
-  }
-  static firstDayOfMonth(date) {
-    return new _DateValue(date.getYear(), date.getMonth(), 1);
-  }
-  /** Formats */
-  toIsoDateString() {
-    return [this.getYear(), this.getPaddedMonth(), this.getPaddedDay()].join("-");
-  }
-  toParts() {
-    return [this.getYear(), this.getMonth(), this.getDay()];
-  }
-  toDate() {
-    return new Date(this.getYear(), this.getMonth() - 1, this.getDay());
-  }
-  toFormattedString(locale, options) {
-    return this.toDate().toLocaleDateString(locale, options);
-  }
-};
-
-// js/calendar/render.js
-function renderMonth(monthEl, config, viewState, metadata) {
-  let headingTemplate = monthEl.querySelector('template[name="heading"]');
-  let weekdayTemplate = monthEl.querySelector('template[name="weekday"]');
-  let weekTemplate = monthEl.querySelector('template[name="week"]');
-  headingTemplate && renderHeading(headingTemplate, config, viewState);
-  weekdayTemplate && renderWeekdays(weekdayTemplate, config);
-  weekTemplate && renderDates(weekTemplate, config, viewState, metadata);
-}
-function renderHeading(template, config, viewState) {
-  renderTemplate(template, (hydrate) => {
-    return hydrate({
-      slots: {
-        default: new Intl.DateTimeFormat(config.locale, {
-          month: template.hasAttribute("display") ? template.getAttribute("display") : "long",
-          year: "numeric",
-          timeZone: "UTC"
-        }).format(new DateValue(viewState.year, viewState.month).getDate())
-      }
-    });
-  });
-}
-function renderWeekdays(template, config) {
-  let format = (date) => {
-    if (template.hasAttribute("display")) {
-      return new Intl.DateTimeFormat(config.locale, { weekday: template.getAttribute("display") }).format(date);
-    }
-    let safeTwoCharLocales = ["en", "es", "de", "fr", "it", "pt"];
-    if (safeTwoCharLocales.includes(config.locale.split("-")[0])) {
-      let formatter2 = new Intl.DateTimeFormat(config.locale, { weekday: "short" });
-      return formatter2.format(date).slice(0, 2);
-    }
-    let formatter = new Intl.DateTimeFormat(config.locale, { weekday: "narrow" });
-    return formatter.format(date);
-  };
-  let weekdays = Array.from({ length: 7 }, (_, idx) => {
-    let adjustedIdx = (idx + config.startDay) % 7;
-    let date = new Date(2024, 0, adjustedIdx + 7);
-    return format(date);
-  });
-  renderTemplate(template, (hydrate) => {
-    return weekdays.map((weekday) => hydrate({ slots: { default: weekday } }));
-  });
-}
-function renderDates(template, config, viewState, metadata) {
-  let month = viewState.month;
-  let year = viewState.year;
-  let firstDay = (new DateValue(year, month).getFirstDayOfMonth() - config.startDay + 7) % 7;
-  let totalDays = new DateValue(year, month).getDaysInMonth();
-  let [prevYear, prevMonth] = new DateValue(year, month).addMonths(-1).toParts();
-  let prevMonthDays = new DateValue(prevYear, prevMonth).getDaysInMonth();
-  let [displayDates, actualDates] = [[], []];
-  for (let i = 0; i < firstDay; i++) {
-    displayDates.push(0);
-    let prevDate = prevMonthDays - firstDay + i + 1;
-    actualDates.push(new DateValue(prevYear, prevMonth, prevDate).toIsoDateString());
-  }
-  for (let i = 1; i <= totalDays; i++) {
-    displayDates.push(i);
-    actualDates.push(new DateValue(year, month, i).toIsoDateString());
-  }
-  let totalCells = firstDay + totalDays;
-  let remainingDays = (7 - totalCells % 7) % 7;
-  let [nextYear, nextMonth] = new DateValue(year, month).addMonths(1).toParts();
-  for (let i = 1; i <= remainingDays; i++) {
-    displayDates.push(0);
-    actualDates.push(new DateValue(nextYear, nextMonth, i).toIsoDateString());
-  }
-  if (config.fixedWeeks) {
-    let currentWeeks = Math.ceil(displayDates.length / 7);
-    let targetWeeks = config.fixedWeeks;
-    let weeksDiff = targetWeeks - currentWeeks;
-    if (weeksDiff > 0) {
-      for (let i = 0; i < weeksDiff * 7; i++) {
-        displayDates.push(0);
-        actualDates.push(DateValue.fromIsoDateString(actualDates[actualDates.length - 1]).addDays(1).toIsoDateString());
-      }
-    } else if (weeksDiff < 0) {
-      displayDates.length = targetWeeks * 7;
-      actualDates.length = targetWeeks * 7;
-    }
-  }
-  let splitIntoWeeks = (arr) => Array.from(
-    { length: Math.ceil(arr.length / 7) },
-    (_, idx) => arr.slice(idx * 7, (idx + 1) * 7)
-  );
-  let displayWeeks = splitIntoWeeks(displayDates);
-  let actualWeeks = splitIntoWeeks(actualDates);
-  renderTemplate(template, (hydrate) => {
-    return displayWeeks.map((week, weekIdx) => {
-      let weekEl = hydrate();
-      let actualWeekDates = actualWeeks[weekIdx];
-      let numberTemplate = weekEl.querySelector('template[name="number"]');
-      if (numberTemplate) {
-        let fourthDayIdx = (4 - config.startDay + 7) % 7;
-        let weekNumber = DateValue.fromIsoDateString(actualWeekDates[fourthDayIdx]).getWeekNumber();
-        renderTemplate(numberTemplate, (hydrate2) => {
-          return hydrate2({ slots: { default: weekNumber } });
-        });
-      }
-      renderTemplate(weekEl.querySelector('template[name="day"]'), (hydrate2) => {
-        return week.map((day, dayIdx) => {
-          if (day === 0) {
-            let weekDate = DateValue.fromIsoDateString(actualWeekDates[dayIdx]);
-            let dayNumber = weekDate.getDay();
-            return hydrate2({
-              slots: { default: dayNumber },
-              attrs: { "data-date": actualWeekDates[dayIdx], "data-outside": "" }
-            });
-          }
-          let date = DateValue.fromIsoDateString(actualWeekDates[dayIdx]);
-          let dayEl = hydrate2({
-            slots: { default: day },
-            attrs: { "data-date": actualWeekDates[dayIdx] }
-          });
-          let subtext = metadata.subtext(date);
-          let details = metadata.details(date);
-          let variant = metadata.variant(date);
-          if (![false, null, void 0].includes(variant)) {
-            dayEl.dataset.dateVariant = variant;
-          }
-          if (![false, null, void 0].includes(subtext)) {
-            let template2 = dayEl.querySelector('template[name="subtext"]');
-            template2 && renderTemplate(template2, (hydrate3) => hydrate3({ slots: { default: subtext } }));
-          }
-          if (![false, null, void 0].includes(details)) {
-            let template2 = dayEl.querySelector('template[name="details"]');
-            template2 && renderTemplate(template2, (hydrate3) => hydrate3({ slots: { default: details } }));
-          }
-          return dayEl;
-        });
-      });
-      return weekEl;
-    });
-  });
-}
-function updateMonth(el, disabled, config, viewState, selectable, validator) {
-  let getFirstDateToMakeTabbable = (month, year) => {
-    return selectable.lowerBound(() => {
-      let isCurrentMonth = DateValue.today().getMonth() === month && DateValue.today().getYear() === year;
-      return isCurrentMonth ? DateValue.today() : new DateValue(year, month);
-    });
-  };
-  let tabbable = getFirstDateToMakeTabbable(viewState.month, viewState.year);
-  el.querySelectorAll("[data-date]").forEach((cell) => {
-    setAttribute2(cell, "role", "gridcell");
-    let button = cell.querySelector("button,ui-button");
-    let date = dateFromCell(cell);
-    if (!date) return;
-    button ? setAttribute2(button, "aria-label", date.toFormattedString(config.locale, { day: "numeric", month: "long", year: "numeric", weekday: "long" })) : setAttribute2(cell, "aria-label", date.toFormattedString(config.locale, { day: "numeric", month: "long", year: "numeric", weekday: "long" }));
-    if (!validator.isValid(date)) {
-      setAttribute2(cell, "disabled", "");
-      setAttribute2(cell, "aria-disabled", "true");
-      button && setAttribute2(button, "disabled", "");
-      validator.isUnavailable(date) && setAttribute2(cell, "data-unavailable", "");
-    } else if (disabled) {
-      setAttribute2(cell, "disabled", "");
-      setAttribute2(cell, "aria-disabled", "true");
-      button && setAttribute2(button, "disabled", "");
-    } else {
-      removeAttribute(cell, "disabled");
-      removeAttribute(cell, "data-unavailable");
-      removeAttribute(cell, "aria-disabled");
-      button && removeAttribute(button, "disabled");
-    }
-    if (DateValue.today().isSameDay(date)) {
-      setAttribute2(cell, "data-today", "");
-    } else {
-      removeAttribute(cell, "data-today", "");
-    }
-    selectable.attributes(cell, date);
-    if (date.isSameDay(tabbable)) {
-      button && setAttribute2(button, "tabindex", "0");
-    } else {
-      button && setAttribute2(button, "tabindex", "-1");
-    }
-  });
-}
-function renderTemplate(template, callback) {
-  if (!template) return;
-  let cleanup = () => {
-    let sibling = template.nextElementSibling;
-    while (sibling && sibling.hasAttribute("data-appended")) {
-      let toRemove = sibling;
-      sibling = sibling.nextElementSibling;
-      toRemove.remove();
-    }
-  };
-  cleanup();
-  let hydrated = callback(({ slots = {}, attrs = {} } = {}) => {
-    let clone = template.content.cloneNode(true).firstElementChild;
-    Object.entries(slots).forEach(([key, value3]) => {
-      let slotNodes = key === "default" ? clone.querySelectorAll("slot:not([name])") : clone.querySelectorAll(`slot[name="${key}"]`);
-      slotNodes.forEach((i) => i.replaceWith(
-        typeof value3 === "string" ? document.createTextNode(value3) : value3
-      ));
-    });
-    clone.querySelectorAll("slot").forEach((slot) => slot.remove());
-    Object.entries(attrs).forEach(([key, value3]) => {
-      clone.setAttribute(key, value3);
-    });
-    return clone;
-  });
-  hydrated = Array.isArray(hydrated) ? hydrated : [hydrated];
-  hydrated.reverse().forEach((node) => {
-    setAttribute2(node, "data-appended", "");
-    template.after(node);
-  });
-  return { cleanup };
-}
-function dateFromCell(cell) {
-  if (!cell) return null;
-  if (!cell.hasAttribute("data-date")) return null;
-  return DateValue.fromIsoDateString(cell.getAttribute("data-date"));
-}
-
-// js/time-picker/selectable.js
-var SelectableModes = class {
-  static SINGLE = "single";
-  static MULTIPLE = "multiple";
-};
-var ObservableTrigger = class {
-  static SELECTION = "selection";
-  static ACTIVATION = "activation";
-  static VIEW_CHANGE = "view-change";
-};
-var Selectable = class _Selectable {
-  constructor(selection, config, observable) {
-    this.config = config;
-    this.observable = observable;
-    this.selection = selection;
-  }
-  select(value3) {
-    let previousSelection = this.selection;
-    this.selection = this.selection.select(value3, this.config);
-    if (this.selection.shouldNotify(previousSelection)) this.observable.notify(ObservableTrigger.SELECTION);
-    else this.observable.notify(ObservableTrigger.ACTIVATION);
-  }
-  setValue(value3) {
-    let previousSelection = this.selection;
-    this.selection = _Selectable.createSelectionFromValue(value3, this.config);
-    if (this.selection.shouldNotify(previousSelection)) this.observable.notify(ObservableTrigger.SELECTION);
-    else this.observable.notify(ObservableTrigger.ACTIVATION);
-  }
-  getValue() {
-    return this.selection.value();
-  }
-  isSelectable(value3) {
-    return this.selection.selectable(value3, this.config);
-  }
-  /** Passthrough methods */
-  contains(...params) {
-    return this.selection.contains(...params);
-  }
-  hasSelection() {
-    return this.selection.hasSelection();
-  }
-  lowerBound(...params) {
-    return this.selection.lowerBound(...params);
-  }
-  upperBound(...params) {
-    return this.selection.upperBound(...params);
-  }
-  display(...params) {
-    return this.selection.display(this.config, ...params);
-  }
-  attributes(...params) {
-    return this.selection.attributes(...params);
-  }
-  static createSelectionFromValue(value3, config) {
-    if (config.mode === SelectableModes.MULTIPLE) {
-      value3 ??= [];
-      return new MultipleSelection(value3);
-    } else {
-      if (!value3) return new NoneSelection();
-      return new SingleSelection(value3);
-    }
-  }
-  static createFromValueStringAttribute(value3, config, observable) {
-    let selection = _Selectable.createSelectionFromValueStringAttribute(value3, config);
-    return new _Selectable(selection, config, observable);
-  }
-  static createSelectionFromValueStringAttribute(value3, config) {
-    if (config.mode === SelectableModes.MULTIPLE) {
-      value3 = value3 ? value3.split(",").map((i) => i.trim()) : [];
-    }
-    return _Selectable.createSelectionFromValue(value3, config);
-  }
-};
-var Selection = class {
-  contains() {
-  }
-  shouldNotify(previousSelection) {
-    return true;
-  }
-  hasSelection() {
-    return false;
-  }
-  lowerBound(fallback) {
-    return value(fallback);
-  }
-  upperBound(fallback) {
-    return this.lowerBound(fallback);
-  }
-  selectable(value3, config) {
-    return true;
-  }
-  display(config) {
-  }
-  value() {
-  }
-  attributes(el, value3) {
-    if (this.contains(value3)) {
-      setAttribute2(el, "data-selected", "");
-      setAttribute2(el, "aria-selected", "true");
-    } else {
-      removeAttribute(el, "data-selected");
-      setAttribute2(el, "aria-selected", "false");
-    }
-  }
-};
-var NoneSelection = class _NoneSelection extends Selection {
-  contains() {
-    return false;
-  }
-  shouldNotify(selection) {
-    return !(selection instanceof _NoneSelection);
-  }
-  hasSelection() {
-    return false;
-  }
-  lowerBound(fallback) {
-    return value(fallback);
-  }
-  select(value3) {
-    return new SingleSelection(value3);
-  }
-  display(config) {
-    return "";
-  }
-  value() {
-    return null;
-  }
-};
-var SingleSelection = class _SingleSelection extends Selection {
-  constructor(value3) {
-    super();
-    this._value = value3;
-  }
-  contains(value3) {
-    return this._value === value3;
-  }
-  shouldNotify(previousSelection) {
-    if (previousSelection instanceof _SingleSelection && this._value === previousSelection._value) return false;
-    return true;
-  }
-  hasSelection() {
-    return true;
-  }
-  lowerBound() {
-    return this._value;
-  }
-  select(value3) {
-    if (this._value === value3) return new NoneSelection();
-    return new _SingleSelection(value3);
-  }
-  display(config) {
-    return formatTime(this._value, config.timeFormat, config.locale);
-  }
-  value() {
-    return this._value;
-  }
-};
-var MultipleSelection = class _MultipleSelection extends Selection {
-  constructor(values) {
-    super();
-    this._values = values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
-  }
-  contains(value3) {
-    return this._values.some((i) => i === value3);
-  }
-  shouldNotify(previousSelection) {
-    if (previousSelection instanceof _MultipleSelection && this._values.every((i) => previousSelection._values.includes(i)) && previousSelection._values.every((i) => this._values.includes(i))) return false;
-    return true;
-  }
-  hasSelection() {
-    return this._values.length > 0;
-  }
-  lowerBound(fallback) {
-    let sortedValues = this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
-    return sortedValues[0] || value(fallback);
-  }
-  upperBound(fallback) {
-    let sortedValues = this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
-    return sortedValues[sortedValues.length - 1] || value(fallback);
-  }
-  select(value3) {
-    let containsValue = this._values.some((i) => i === value3);
-    if (containsValue) return new _MultipleSelection(this._values.filter((i) => i !== value3));
-    return new _MultipleSelection([...this._values, value3]);
-  }
-  display(config) {
-    return this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1).map((i) => formatTime(i, config.timeFormat, config.locale)).join(", ");
-  }
-  value() {
-    return this._values;
-  }
-};
-function value(i = null) {
-  return typeof i === "function" ? i() : i;
-}
 
 // js/element.js
 var UIElement = class extends HTMLElement {
@@ -2642,6 +2117,406 @@ var MixinGroup = class extends Mixin {
   }
 };
 
+// js/mixins/controllable.js
+var Controllable = class extends Mixin {
+  boot({ options }) {
+    options({
+      bubbles: false
+    });
+    this.initialState = this.el.value;
+    this.getterFunc = () => {
+    };
+    this.setterFunc = (value3) => this.initialState = value3;
+    Object.defineProperty(this.el, "value", {
+      get: () => {
+        return this.getterFunc();
+      },
+      set: (value3) => {
+        this.setterFunc(value3);
+      }
+    });
+  }
+  initial(callback) {
+    callback(this.initialState);
+  }
+  getter(func) {
+    this.getterFunc = func;
+  }
+  setter(func) {
+    this.setterFunc = func;
+  }
+  dispatch() {
+    this.el.dispatchEvent(new Event("input", {
+      bubbles: this.options().bubbles,
+      cancelable: true
+    }));
+    this.el.dispatchEvent(new Event("change", {
+      bubbles: this.options().bubbles,
+      cancelable: true
+    }));
+  }
+};
+
+// js/mixins/dialogable.js
+var lastMouseDownEvent = null;
+document.addEventListener("mousedown", (event) => lastMouseDownEvent = event);
+var Dialogable = class extends Mixin {
+  boot({ options }) {
+    options({
+      clickOutside: true,
+      triggers: []
+    });
+    this.onChanges = [];
+    this.state = false;
+    this.stopDialogFromFocusingTheFirstElement();
+    let triggers = this.options().triggers;
+    let observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName !== "open") return;
+        this.el.hasAttribute("open") ? this.state = true : this.state = false;
+      });
+      this.onChanges.forEach((i) => i());
+    });
+    observer.observe(this.el, { attributeFilter: ["open"] });
+    if (this.options().clickOutside) {
+      this.el.addEventListener("click", (e) => {
+        if (e.target !== this.el) {
+          lastMouseDownEvent = null;
+          return;
+        }
+        if (lastMouseDownEvent && clickHappenedOutside(this.el, lastMouseDownEvent) && clickHappenedOutside(this.el, e)) {
+          this.cancel();
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        lastMouseDownEvent = null;
+      });
+    }
+    if (this.el.hasAttribute("open")) {
+      this.state = true;
+      this.hide();
+      this.show();
+    }
+  }
+  onChange(callback) {
+    this.onChanges.push(callback);
+  }
+  show() {
+    if (!this.el.isConnected) return;
+    this.el.showModal();
+  }
+  hide() {
+    this.el.close();
+  }
+  toggle() {
+    this.state ? this.hide() : this.show();
+  }
+  cancel() {
+    let event = new Event("cancel", { bubbles: false, cancelable: true });
+    this.el.dispatchEvent(event);
+    if (!event.defaultPrevented) {
+      this.hide();
+    }
+  }
+  getState() {
+    return this.state;
+  }
+  setState(value3) {
+    value3 ? this.show() : this.hide();
+  }
+  // By default, browsers focus the first focusable element inside a dialog when it is opened. This is bad for screen readers because
+  // the focus could potentially be at the end of the dialog skipping all of the content. This also causes issues for iOS devices
+  // as when inputs are focused and the keyboard is shown, hiding half of the dialog content...
+  stopDialogFromFocusingTheFirstElement() {
+    let placeholder = document.createElement("div");
+    placeholder.setAttribute("data-flux-focus-placeholder", "");
+    placeholder.setAttribute("data-appended", "");
+    placeholder.setAttribute("tabindex", "0");
+    this.el.prepend(placeholder);
+    this.onChange(() => {
+      setAttribute2(placeholder, "style", this.state ? "display: none" : "display: block");
+      if (this.state && isSafari() && !this.el.hasAttribute("autofocus") && this.el.querySelectorAll("[autofocus]").length === 0) {
+        setTimeout(() => {
+          this.el.setAttribute("tabindex", "-1");
+          this.el.focus();
+          this.el.blur();
+        });
+      }
+    });
+  }
+};
+function clickHappenedOutside(el, event) {
+  let rect = el.getBoundingClientRect();
+  let x = event.clientX;
+  let y = event.clientY;
+  let isInside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  return !isInside;
+}
+
+// js/mixins/closeable.js
+var Closeable = class extends Mixin {
+  boot() {
+    this.onCloses = [];
+  }
+  onClose(callback) {
+    this.onCloses.push(callback);
+  }
+  close() {
+    this.onCloses.forEach((callback) => callback());
+  }
+};
+
+// js/modal.js
+var UIModal = class extends UIElement {
+  boot() {
+    this.querySelectorAll("[data-appended]").forEach((el) => el.remove());
+    this._controllable = new Controllable(this, { disabled: this.hasAttribute("disabled") });
+    let button = this.button();
+    let dialog = this.dialog();
+    if (!dialog) return;
+    dialog._dialogable = new Dialogable(dialog, {
+      clickOutside: !this.hasAttribute("disable-click-outside")
+    });
+    dialog._closeable = new Closeable(dialog);
+    dialog._closeable.onClose(() => dialog._dialogable.hide());
+    this._controllable.initial((initial) => initial && dialog._dialogable.show());
+    this._controllable.getter(() => dialog._dialogable.getState());
+    let detangled = detangle();
+    this._controllable.setter(detangled((value3) => {
+      dialog._dialogable.setState(value3);
+    }));
+    dialog._dialogable.onChange(detangled(() => {
+      this._controllable.dispatch();
+    }));
+    let refresh = () => {
+      if (dialog._dialogable.getState()) {
+        setAttribute2(this, "data-open", "");
+        button?.setAttribute("data-open", "");
+        setAttribute2(dialog, "data-open", "");
+      } else {
+        removeAttribute(this, "data-open");
+        button?.removeAttribute("data-open");
+        removeAttribute(dialog, "data-open");
+      }
+    };
+    dialog._dialogable.onChange(() => refresh());
+    refresh();
+    let { lock, unlock } = lockScroll();
+    dialog._dialogable.onChange(() => {
+      dialog._dialogable.getState() ? lock() : unlock();
+    });
+    button && on(button, "click", (e) => {
+      dialog._dialogable.show();
+    });
+  }
+  unmount() {
+    if (this.dialog()?._dialogable?.getState()) {
+      let { unlock } = lockScroll();
+      unlock();
+    }
+  }
+  button() {
+    let button = this.querySelector("button,ui-button");
+    let dialog = this.dialog();
+    if (dialog?.contains(button)) return;
+    return button;
+  }
+  dialog() {
+    return this.querySelector("dialog");
+  }
+  showModal() {
+    let dialog = this.dialog();
+    if (!dialog) return;
+    dialog.showModal();
+  }
+};
+inject(({ css }) => css`dialog, ::backdrop { margin: auto; }`);
+element("modal", UIModal);
+
+// js/mixins/activatable.js
+var ActivatableGroup = class extends MixinGroup {
+  groupOfType = Activatable;
+  boot({ options }) {
+    options({
+      wrap: false,
+      filter: false
+    });
+    this.onChanges = [];
+  }
+  onChange(callback) {
+    this.onChanges.push(callback);
+  }
+  activated(activeEl) {
+    this.onChanges.forEach((i) => i());
+  }
+  activateFirst() {
+    this.filterAwareWalker().first()?.use(Activatable).activate();
+  }
+  activateBySearch(query) {
+    let found = this.filterAwareWalker().find((i) => i.textContent.toLowerCase().trim().startsWith(query.toLowerCase()));
+    found?.use(Activatable).activate();
+  }
+  activateSelectedOrFirst(selectedEl) {
+    let isHidden = (el) => el.matches("ui-option, ui-option-create") ? getComputedStyle(el).display === "none" : false;
+    if (!selectedEl || isHidden(selectedEl)) {
+      this.filterAwareWalker().first()?.use(Activatable).activate();
+      return;
+    }
+    selectedEl?.use(Activatable).activate();
+  }
+  activateActiveOrFirst() {
+    let active = this.getActive();
+    if (!active) {
+      this.filterAwareWalker().first()?.use(Activatable).activate();
+      return;
+    }
+    active?.use(Activatable).activate();
+  }
+  activateActiveOrLast() {
+    let active = this.getActive();
+    if (!active) {
+      this.filterAwareWalker().last()?.use(Activatable).activate();
+      return;
+    }
+    active?.use(Activatable).activate();
+  }
+  activatePrev() {
+    let active = this.getActive();
+    if (!active) {
+      this.filterAwareWalker().last()?.use(Activatable).activate();
+      return;
+    }
+    let found;
+    if (this.options.wrap) {
+      found = this.filterAwareWalker().prevOrLast(active);
+    } else {
+      found = this.filterAwareWalker().prev(active);
+    }
+    found?.use(Activatable).activate();
+  }
+  activateNext() {
+    let active = this.getActive();
+    if (!active) {
+      this.filterAwareWalker().first()?.use(Activatable).activate();
+      return;
+    }
+    let found;
+    if (this.options.wrap) {
+      found = this.filterAwareWalker().nextOrFirst(active);
+    } else {
+      found = this.filterAwareWalker().next(active);
+    }
+    found?.use(Activatable).activate();
+  }
+  getActive() {
+    return this.walker().find((i) => i.use(Activatable).isActive());
+  }
+  clearActive() {
+    this.getActive()?.use(Activatable).deactivate();
+  }
+  filterAwareWalker() {
+    let isHidden = (el) => el.matches("ui-option, ui-option-create") ? getComputedStyle(el).display === "none" : false;
+    return walker(this.el, (el, { skip, reject }) => {
+      if (el[this.constructor.name] && el !== this.el) return reject();
+      if (!el[this.groupOfType.name]) return skip();
+      if (el.hasAttribute("disabled")) return reject();
+      if (isHidden(el)) return reject();
+    });
+  }
+};
+var Activatable = class _Activatable extends Mixin {
+  groupedByType = ActivatableGroup;
+  mount() {
+    this.el.addEventListener("mouseenter", () => {
+      this.activate();
+    });
+    this.el.addEventListener("mouseleave", () => {
+      this.deactivate();
+    });
+  }
+  activate(force = false) {
+    if (this.group()) {
+      this.group().walker().each((item) => item.use(_Activatable).deactivate(false));
+    }
+    if (this.el.hasAttribute("disabled") && !force) return;
+    setAttribute2(this.el, "data-active", "");
+    if (isUsingKeyboard()) {
+      this.el.scrollIntoView({ block: "nearest" });
+    }
+    this.group() && this.group().activated(this.el);
+  }
+  deactivate(notify = true) {
+    removeAttribute(this.el, "data-active");
+    notify && this.group() && this.group().activated(this.el);
+  }
+  isActive() {
+    return this.el.hasAttribute("data-active");
+  }
+};
+
+// js/mixins/filterable.js
+var FilterableGroup = class extends MixinGroup {
+  groupOfType = Filterable;
+  boot({ options }) {
+    options({});
+    this.onChanges = [];
+    this.lastSearch = "";
+  }
+  onChange(callback) {
+    this.onChanges.push(callback);
+  }
+  filter(search2) {
+    if (search2 === "") {
+      this.walker().each((i) => {
+        i.use(Filterable).unfilter();
+      });
+    } else {
+      this.walker().each((i) => {
+        if (this.matches(i, search2)) {
+          i.use(Filterable).unfilter();
+        } else {
+          i.use(Filterable).filter();
+        }
+      });
+    }
+    if (this.lastSearch !== search2) {
+      this.onChanges.forEach((i) => i());
+    }
+    this.lastSearch = search2;
+  }
+  matches(el, search2) {
+    return this.normalize(el.textContent).includes(this.normalize(search2));
+  }
+  // This function normalizes the value to remove diacritics (accents) and convert to lowercase
+  // to ensure that the search is case-insensitive and diacritic-insensitive...
+  normalize(value3) {
+    return value3.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+  }
+  hasResults() {
+    return this.walker().some((i) => !i.use(Filterable).isFiltered());
+  }
+};
+var Filterable = class extends Mixin {
+  groupedByType = FilterableGroup;
+  boot({ options }) {
+    options({ mirror: null, keep: false });
+    this.onChanges = [];
+  }
+  filter() {
+    if (this.options().keep) return;
+    setAttribute2(this.el, "data-hidden", "");
+    if (this.options().mirror) setAttribute2(this.options().mirror, "data-hidden", "");
+  }
+  unfilter() {
+    if (this.options().keep) return;
+    removeAttribute(this.el, "data-hidden");
+    if (this.options().mirror) removeAttribute(this.options().mirror, "data-hidden", "");
+  }
+  isFiltered() {
+    return this.el.hasAttribute("data-hidden");
+  }
+};
+
 // js/mixins/popoverable.js
 var currentlyOpenPopoversByScope = /* @__PURE__ */ new Map();
 var Popoverable = class extends Mixin {
@@ -2701,13 +2576,13 @@ var Popoverable = class extends Mixin {
     return this.state;
   }
   toggle() {
-    this.el.togglePopover();
+    this.el.isConnected && this.el.togglePopover();
   }
   show() {
-    this.el.showPopover();
+    this.el.isConnected && this.el.showPopover();
   }
   hide() {
-    this.el.hidePopover();
+    this.el.isConnected && this.el.hidePopover();
   }
 };
 function closeOtherOpenPopovers(el, scope) {
@@ -2743,6 +2618,59 @@ function closeOnEscape(el, except, controller) {
     el.hidePopover();
   }, { signal: controller.signal });
 }
+
+// js/mixins/disableable.js
+var Disableable = class extends Mixin {
+  boot({ options }) {
+    options({
+      disableWithParent: true
+    });
+    this.onChanges = [];
+    Object.defineProperty(this.el, "disabled", {
+      get: () => {
+        return this.el.hasAttribute("disabled");
+      },
+      set: (value3) => {
+        if (value3) {
+          this.el.setAttribute("disabled", "");
+        } else {
+          this.el.removeAttribute("disabled");
+        }
+      }
+    });
+    if (this.el.hasAttribute("disabled")) {
+      this.el.disabled = true;
+    } else if (this.options().disableWithParent && this.el.parentElement?.closest("[disabled]")) {
+      this.el.disabled = true;
+    }
+    let observer = new MutationObserver((mutations) => {
+      this.onChanges.forEach((i) => i(this.el.disabled));
+    });
+    observer.observe(this.el, { attributeFilter: ["disabled"] });
+  }
+  onChange(callback) {
+    this.onChanges.push(callback);
+  }
+  onInitAndChange(callback) {
+    callback(this.el.disabled);
+    this.onChanges.push(callback);
+  }
+  enabled(callback) {
+    return (...args) => {
+      if (this.el.disabled) return;
+      return callback(...args);
+    };
+  }
+  disabled(callback) {
+    return (...args) => {
+      if (!this.el.disabled) return;
+      return callback(...args);
+    };
+  }
+  isDisabled() {
+    return this.el.disabled;
+  }
+};
 
 // node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
 var min = Math.min;
@@ -4245,180 +4173,6 @@ function createDurablePositionSetter(target, { scrollY = true }) {
   ];
 }
 
-// js/mixins/disableable.js
-var Disableable = class extends Mixin {
-  boot({ options }) {
-    options({
-      disableWithParent: true
-    });
-    this.onChanges = [];
-    Object.defineProperty(this.el, "disabled", {
-      get: () => {
-        return this.el.hasAttribute("disabled");
-      },
-      set: (value3) => {
-        if (value3) {
-          this.el.setAttribute("disabled", "");
-        } else {
-          this.el.removeAttribute("disabled");
-        }
-      }
-    });
-    if (this.el.hasAttribute("disabled")) {
-      this.el.disabled = true;
-    } else if (this.options().disableWithParent && this.el.parentElement?.closest("[disabled]")) {
-      this.el.disabled = true;
-    }
-    let observer = new MutationObserver((mutations) => {
-      this.onChanges.forEach((i) => i(this.el.disabled));
-    });
-    observer.observe(this.el, { attributeFilter: ["disabled"] });
-  }
-  onChange(callback) {
-    this.onChanges.push(callback);
-  }
-  onInitAndChange(callback) {
-    callback(this.el.disabled);
-    this.onChanges.push(callback);
-  }
-  enabled(callback) {
-    return (...args) => {
-      if (this.el.disabled) return;
-      return callback(...args);
-    };
-  }
-  disabled(callback) {
-    return (...args) => {
-      if (!this.el.disabled) return;
-      return callback(...args);
-    };
-  }
-  isDisabled() {
-    return this.el.disabled;
-  }
-};
-
-// js/mixins/activatable.js
-var ActivatableGroup = class extends MixinGroup {
-  groupOfType = Activatable;
-  boot({ options }) {
-    options({
-      wrap: false,
-      filter: false
-    });
-    this.onChanges = [];
-  }
-  onChange(callback) {
-    this.onChanges.push(callback);
-  }
-  activated(activeEl) {
-    this.onChanges.forEach((i) => i());
-  }
-  activateFirst() {
-    this.filterAwareWalker().first()?.use(Activatable).activate();
-  }
-  activateBySearch(query) {
-    let found = this.filterAwareWalker().find((i) => i.textContent.toLowerCase().trim().startsWith(query.toLowerCase()));
-    found?.use(Activatable).activate();
-  }
-  activateSelectedOrFirst(selectedEl) {
-    let isHidden = (el) => el.matches("ui-option") ? getComputedStyle(el).display === "none" : false;
-    if (!selectedEl || isHidden(selectedEl)) {
-      this.filterAwareWalker().first()?.use(Activatable).activate();
-      return;
-    }
-    selectedEl?.use(Activatable).activate();
-  }
-  activateActiveOrFirst() {
-    let active = this.getActive();
-    if (!active) {
-      this.filterAwareWalker().first()?.use(Activatable).activate();
-      return;
-    }
-    active?.use(Activatable).activate();
-  }
-  activateActiveOrLast() {
-    let active = this.getActive();
-    if (!active) {
-      this.filterAwareWalker().last()?.use(Activatable).activate();
-      return;
-    }
-    active?.use(Activatable).activate();
-  }
-  activatePrev() {
-    let active = this.getActive();
-    if (!active) {
-      this.filterAwareWalker().last()?.use(Activatable).activate();
-      return;
-    }
-    let found;
-    if (this.options.wrap) {
-      found = this.filterAwareWalker().prevOrLast(active);
-    } else {
-      found = this.filterAwareWalker().prev(active);
-    }
-    found?.use(Activatable).activate();
-  }
-  activateNext() {
-    let active = this.getActive();
-    if (!active) {
-      this.filterAwareWalker().first()?.use(Activatable).activate();
-      return;
-    }
-    let found;
-    if (this.options.wrap) {
-      found = this.filterAwareWalker().nextOrFirst(active);
-    } else {
-      found = this.filterAwareWalker().next(active);
-    }
-    found?.use(Activatable).activate();
-  }
-  getActive() {
-    return this.walker().find((i) => i.use(Activatable).isActive());
-  }
-  clearActive() {
-    this.getActive()?.use(Activatable).deactivate();
-  }
-  filterAwareWalker() {
-    let isHidden = (el) => el.matches("ui-option") ? getComputedStyle(el).display === "none" : false;
-    return walker(this.el, (el, { skip, reject }) => {
-      if (el[this.constructor.name] && el !== this.el) return reject();
-      if (!el[this.groupOfType.name]) return skip();
-      if (el.hasAttribute("disabled")) return reject();
-      if (isHidden(el)) return reject();
-    });
-  }
-};
-var Activatable = class _Activatable extends Mixin {
-  groupedByType = ActivatableGroup;
-  mount() {
-    this.el.addEventListener("mouseenter", () => {
-      this.activate();
-    });
-    this.el.addEventListener("mouseleave", () => {
-      this.deactivate();
-    });
-  }
-  activate() {
-    if (this.group()) {
-      this.group().walker().each((item) => item.use(_Activatable).deactivate(false));
-    }
-    if (this.el.hasAttribute("disabled")) return;
-    setAttribute2(this.el, "data-active", "");
-    if (isUsingKeyboard()) {
-      this.el.scrollIntoView({ block: "nearest" });
-    }
-    this.group() && this.group().activated(this.el);
-  }
-  deactivate(notify = true) {
-    removeAttribute(this.el, "data-active");
-    notify && this.group() && this.group().activated(this.el);
-  }
-  isActive() {
-    return this.el.hasAttribute("data-active");
-  }
-};
-
 // js/selected.js
 var UISelected = class extends UIElement {
   boot() {
@@ -4480,7 +4234,6 @@ var UISelected = class extends UIElement {
       } else {
         if (!["", null, void 0].includes(value3)) {
           if (retry) return setTimeout(() => {
-            console.log("retrying...");
             this.render();
           });
           else throw `Could not find option for value "${value3}"`;
@@ -4557,8 +4310,8 @@ var UISelected = class extends UIElement {
       let fragment2 = new DocumentFragment();
       fragment2.append(...selected.el.cloneNode(true).childNodes);
       let optionEl = hydrateTemplate2(this.templates.option, {
-        text: selected.el.textContent.trim(),
-        default: fragment2,
+        text: selected.getSelectedLabel() ?? selected.getLabel(),
+        default: selected.getSelectedLabel() ?? fragment2,
         value: value3
       });
       optionEl.setAttribute("data-value", value3);
@@ -4585,8 +4338,8 @@ var UISelected = class extends UIElement {
       let fragment = new DocumentFragment();
       fragment.append(...selected.el.cloneNode(true).childNodes);
       let optionEl = hydrateTemplate2(this.templates.option, {
-        text: selected.el.textContent.trim(),
-        default: fragment,
+        text: selected.getSelectedLabel() ?? selected.getLabel(),
+        default: selected.getSelectedLabel() ?? fragment,
         value: value3
       });
       optionEl.setAttribute("data-value", value3);
@@ -4655,7 +4408,7 @@ function hydrateTemplate2(template, slots = {}) {
 
 // js/mixins/selectable.js
 var SelectableGroup = class extends MixinGroup {
-  groupOfType = Selectable2;
+  groupOfType = Selectable;
   boot({ options }) {
     options({
       multiple: false
@@ -4707,7 +4460,7 @@ var SelectableGroup = class extends MixinGroup {
     this.state = this.options().multiple ? new Set(value3) : value3;
     let values = this.options().multiple ? value3 : [value3];
     this.walker().each((el) => {
-      let selectable = el.use(Selectable2);
+      let selectable = el.use(Selectable);
       if (selectable.ungrouped) return;
       let selected = values.includes(selectable.value);
       if (selected && !selectable.isSelected()) {
@@ -4719,34 +4472,40 @@ var SelectableGroup = class extends MixinGroup {
     this.onChanges.forEach((i) => i());
   }
   selected() {
-    return this.walker().find((item) => item.use(Selectable2).isSelected()).use(Selectable2);
+    return this.walker().find((item) => item.use(Selectable).isSelected()).use(Selectable);
   }
   selecteds() {
-    return this.walker().filter((el) => el.use(Selectable2).isSelected()).map((el) => el.use(Selectable2));
+    return this.walker().filter((el) => el.use(Selectable).isSelected()).map((el) => el.use(Selectable));
   }
   selectFirst() {
-    this.walker().first()?.use(Selectable2).select();
+    this.walker().first()?.use(Selectable).select();
   }
   selectAll() {
-    this.walker().filter((el) => !el.use(Selectable2).isSelected()).map((el) => el.use(Selectable2).select());
+    this.walker().filter((el) => !el.use(Selectable).isSelected()).map((el) => el.use(Selectable).select());
   }
   deselectAll() {
-    this.walker().filter((el) => el.use(Selectable2).isSelected()).map((el) => el.use(Selectable2).deselect());
+    this.walker().filter((el) => el.use(Selectable).isSelected()).map((el) => el.use(Selectable).deselect());
   }
   allAreSelected() {
     let selectableElements = this.walker().filter((el) => true);
-    return selectableElements.length > 0 && this.walker().filter((el) => el.use(Selectable2).isSelected()).length === selectableElements.length;
+    return selectableElements.length > 0 && this.walker().filter((el) => el.use(Selectable).isSelected()).length === selectableElements.length;
   }
   noneAreSelected() {
     return this.state === null || this.state?.size === 0;
   }
+  isEmpty() {
+    return this.noneAreSelected();
+  }
+  isNotEmpty() {
+    return !this.isEmpty();
+  }
   selectableByValue(value3) {
-    return this.walker().find((el) => el.use(Selectable2).value === value3)?.use(Selectable2);
+    return this.walker().find((el) => el.use(Selectable).value === value3)?.use(Selectable);
   }
   deselectOthers(except) {
     this.walker().each((el) => {
       if (el === except) return;
-      el.use(Selectable2).surgicallyDeselect();
+      el.use(Selectable).surgicallyDeselect();
     });
   }
   selectedTextValue() {
@@ -4758,7 +4517,7 @@ var SelectableGroup = class extends MixinGroup {
   convertValueStringToElementText(value3) {
     let selected = this.findByValue(value3);
     if (selected) {
-      return selected.label || selected.value;
+      return selected.selectedLabel || selected.label || selected.value;
     } else {
       return value3;
     }
@@ -4774,7 +4533,7 @@ var SelectableGroup = class extends MixinGroup {
     });
   }
 };
-var Selectable2 = class extends Mixin {
+var Selectable = class extends Mixin {
   boot({ options }) {
     this.groupedByType = SelectableGroup;
     options({
@@ -4782,6 +4541,7 @@ var Selectable2 = class extends Mixin {
       togglable: false,
       value: void 0,
       label: void 0,
+      selectedLabel: void 0,
       selectedInitially: false,
       dataAttr: "data-selected",
       ariaAttr: "aria-selected"
@@ -4790,6 +4550,7 @@ var Selectable2 = class extends Mixin {
     this.value = this.options().value === void 0 ? this.el.value : this.options().value;
     this.value = this.value + "";
     this.label = this.options().label;
+    this.selectedLabel = this.options().selectedLabel;
     let state = this.options().selectedInitially;
     this.onSelects = [];
     this.onUnselects = [];
@@ -4902,102 +4663,8 @@ var Selectable2 = class extends Mixin {
   getLabel() {
     return this.label;
   }
-};
-
-// js/mixins/filterable.js
-var FilterableGroup = class extends MixinGroup {
-  groupOfType = Filterable;
-  boot({ options }) {
-    options({});
-    this.onChanges = [];
-    this.lastSearch = "";
-  }
-  onChange(callback) {
-    this.onChanges.push(callback);
-  }
-  filter(search2) {
-    if (search2 === "") {
-      this.walker().each((i) => {
-        i.use(Filterable).unfilter();
-      });
-    } else {
-      this.walker().each((i) => {
-        if (this.matches(i, search2)) {
-          i.use(Filterable).unfilter();
-        } else {
-          i.use(Filterable).filter();
-        }
-      });
-    }
-    if (this.lastSearch !== search2) {
-      this.onChanges.forEach((i) => i());
-    }
-    this.lastSearch = search2;
-  }
-  matches(el, search2) {
-    return el.textContent.toLowerCase().trim().includes(search2.toLowerCase().trim());
-  }
-  hasResults() {
-    return this.walker().some((i) => !i.use(Filterable).isFiltered());
-  }
-};
-var Filterable = class extends Mixin {
-  groupedByType = FilterableGroup;
-  boot({ options }) {
-    options({ mirror: null, keep: false });
-    this.onChanges = [];
-  }
-  filter() {
-    if (this.options().keep) return;
-    setAttribute2(this.el, "data-hidden", "");
-    if (this.options().mirror) setAttribute2(this.options().mirror, "data-hidden", "");
-  }
-  unfilter() {
-    removeAttribute(this.el, "data-hidden");
-    if (this.options().mirror) removeAttribute(this.options().mirror, "data-hidden", "");
-  }
-  isFiltered() {
-    return this.el.hasAttribute("data-hidden");
-  }
-};
-
-// js/mixins/controllable.js
-var Controllable = class extends Mixin {
-  boot({ options }) {
-    options({
-      bubbles: false
-    });
-    this.initialState = this.el.value;
-    this.getterFunc = () => {
-    };
-    this.setterFunc = (value3) => this.initialState = value3;
-    Object.defineProperty(this.el, "value", {
-      get: () => {
-        return this.getterFunc();
-      },
-      set: (value3) => {
-        this.setterFunc(value3);
-      }
-    });
-  }
-  initial(callback) {
-    callback(this.initialState);
-  }
-  getter(func) {
-    this.getterFunc = func;
-  }
-  setter(func) {
-    this.setterFunc = func;
-  }
-  dispatch() {
-    this.el.dispatchEvent(new Event("input", {
-      bubbles: this.options().bubbles,
-      cancelable: true
-    }));
-    this.el.dispatchEvent(new Event("change", {
-      bubbles: this.options().bubbles,
-      cancelable: true
-    }));
+  getSelectedLabel() {
+    return this.selectedLabel;
   }
 };
 
@@ -5074,6 +4741,19 @@ var Submittable = class extends Mixin {
   isObjectOrArray(value3) {
     return typeof value3 === "object" && value3 !== null;
   }
+  submitEnclosingForm() {
+    let form = this.getAssociatedForm();
+    if (form) {
+      form.requestSubmit();
+    }
+  }
+  getAssociatedForm() {
+    let formId = this.el.getAttribute("form");
+    if (formId) {
+      return document.getElementById(formId) || null;
+    }
+    return this.el.closest("form");
+  }
 };
 
 // js/select.js
@@ -5101,12 +4781,12 @@ var UISelect = class extends UIControl {
     this._selectable.onInitAndChange(() => {
       this._submittable.update(this._selectable.getState());
     });
-    queueMicrotask(() => {
-      this._submittable.update(this._selectable.getState());
-    });
   }
   mount() {
     this._disableable = new Disableable(this);
+    queueMicrotask(() => {
+      this._submittable.update(this._selectable.getState());
+    });
     let input = this.input();
     let button = this.button();
     let list = this.list();
@@ -5131,7 +4811,9 @@ var UISelect = class extends UIControl {
       });
       this.addEventListener("close", () => {
         if (this._filterable) {
-          this._filterable.filter("");
+          requestAnimationFrame(() => {
+            this._filterable.filter("");
+          });
         }
       });
     }
@@ -5156,10 +4838,10 @@ var UISelect = class extends UIControl {
       });
       handleInputClearing(this, input2, this._selectable, this._popoverable);
       handleActivationOnFocus(input2, this._activatable, this._selectable);
-      handleAutocomplete(autocomplete, strictAutocomplete, this, input2, this._selectable, this._popoverable);
+      handleAutocomplete(autocomplete, strictAutocomplete, this, input2, this._selectable, this._popoverable, this._filterable);
       preventInputEventsFromBubblingToSelectRoot(input2);
       highlightInputContentsWhenFocused(input2);
-      this._filterable && filterResultsByInput(input2, this._filterable);
+      this._filterable && filterResultsByInput(list, input2, this._filterable);
       trackActiveDescendant(input2, this._activatable, this._selectable);
       handleKeyboardNavigation(input2, this._activatable);
       handleKeyboardSelection(this, input2, this._activatable);
@@ -5177,7 +4859,7 @@ var UISelect = class extends UIControl {
         gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
         offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0
       });
-      handleAutocomplete(autocomplete, strictAutocomplete, this, input2, this._selectable, this._popoverable);
+      handleAutocomplete(autocomplete, strictAutocomplete, this, input2, this._selectable, this._popoverable, this._filterable);
       this._disableable.onInitAndChange((disabled) => {
         if (disabled) {
           input2 && setAttribute2(input2, "disabled", "");
@@ -5202,7 +4884,7 @@ var UISelect = class extends UIControl {
       linkExpandedStateToPopover(input2, this._popoverable);
       preventInputEventsFromBubblingToSelectRoot(input2);
       highlightInputContentsWhenFocused(input2);
-      this._filterable && filterResultsByInput(input2, this._filterable);
+      this._filterable && filterResultsByInput(list, input2, this._filterable);
       trackActiveDescendant(input2, this._activatable, this._selectable);
       controlPopoverWithInput(input2, this._popoverable);
       controlPopoverWithKeyboard(input2, this._popoverable, this._activatable, this._selectable);
@@ -5240,14 +4922,15 @@ var UISelect = class extends UIControl {
       });
       preventInputEventsFromBubblingToSelectRoot(input2);
       highlightInputContentsWhenFocused(input2);
-      this._filterable && filterResultsByInput(input2, this._filterable);
+      this._filterable && filterResultsByInput(list, input2, this._filterable);
+      trackActiveDescendant(input2, this._activatable, this._selectable);
       focusInputWhenPopoverOpens(input2, this._popoverable);
       initPopover(this, button2, popover, this._popoverable, this._anchorable);
       preventScrollWhenPopoverIsOpen(this, this._popoverable, [input2]);
       linkExpandedStateToPopover(button2, this._popoverable);
       handleInputClearing(this, input2, this._selectable, this._popoverable);
       controlPopoverWithKeyboard(button2, this._popoverable, this._activatable, this._selectable);
-      togglePopoverWithMouse(button2, this._popoverable);
+      togglePopoverWithMouse(button2, this._popoverable, input2);
       controlPopoverWithEscapeKey(this, this._popoverable);
       handleKeyboardNavigation(input2, this._activatable);
       handleKeyboardSearchNavigation(button2, this._activatable, this._popoverable);
@@ -5292,12 +4975,10 @@ var UISelect = class extends UIControl {
       handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
     }
     let observer = new MutationObserver(() => {
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         if (!this._popoverable || this._popoverable.getState()) {
           let firstSelectedOption = this._selectable.selecteds().find((selected) => !selected.el._disableable.isDisabled())?.el;
-          setTimeout(() => {
-            this._activatable.activateSelectedOrFirst(firstSelectedOption);
-          });
+          this._activatable.activateSelectedOrFirst(firstSelectedOption);
         } else {
           this._activatable.clearActive();
         }
@@ -5326,9 +5007,8 @@ var UISelect = class extends UIControl {
     return this.querySelector("ui-options") || this;
   }
   clear() {
-    if (!this.input()) return;
-    this.input().value = "";
-    this.input().dispatchEvent(new Event("input", { bubbles: false }));
+    this._selectable.deselectAll();
+    this.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
   }
   open() {
     this._popoverable.setState(true);
@@ -5349,48 +5029,11 @@ var UISelect = class extends UIControl {
     }
   }
 };
-var UIEmpty = class extends UIElement {
-  boot() {
-    setAttribute2(this, "data-hidden", "");
-  }
-  mount() {
-    queueMicrotask(() => {
-      let picker = this.closest("ui-autocomplete, ui-combobox, ui-select, ui-pillbox");
-      let list = this.closest("ui-options");
-      if (!list) return;
-      let isHidden = (el) => el.hasAttribute("data-hidden");
-      let refresh = () => {
-        let empty;
-        if (CSS.supports("selector(&)")) {
-          empty = Array.from(list.querySelectorAll("& > ui-option")).filter((i) => !isHidden(i)).length === 0;
-        } else {
-          empty = Array.from(list.querySelectorAll(":scope > ui-option")).filter((i) => !isHidden(i)).length === 0;
-        }
-        if (empty) {
-          removeAttribute(this, "data-hidden");
-        } else {
-          setAttribute2(this, "data-hidden", "");
-        }
-      };
-      refresh();
-      let filterable = picker._filterable;
-      if (filterable) {
-        filterable.onChange(refresh);
-      }
-      let observer = new MutationObserver((mutations) => {
-        setTimeout(() => refresh());
-      });
-      observer.observe(list, { childList: true });
-    });
-  }
-};
 element("selected-remove", UISelectedRemove);
 element("selected", UISelected);
 element("select", UISelect);
-element("empty", UIEmpty);
 inject(({ css }) => css`ui-select { display: block; }`);
 inject(({ css }) => css`ui-selected-option { display: contents; }`);
-inject(({ css }) => css`ui-empty { display: block; cursor: default; }`);
 function handleKeyboardNavigation(el, activatable) {
   on(el, "keydown", (e) => {
     if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
@@ -5420,24 +5063,41 @@ function handleKeyboardSelection(root, el, activatable) {
       e.preventDefault();
       e.stopPropagation();
       if (!activeEl) return;
+      if (activeEl._disableable?.isDisabled()) return;
       activeEl.click();
-      root.dispatchEvent(new CustomEvent("action", {
+      root.dispatchEvent(new CustomEvent("interaction", {
         bubbles: false,
-        cancelable: false
+        cancelable: false,
+        detail: { optionEl: activeEl }
       }));
+      if (activeEl.hasAttribute("action")) {
+        root.dispatchEvent(new CustomEvent("action", {
+          bubbles: false,
+          cancelable: false,
+          detail: { optionEl: activeEl }
+        }));
+      }
     }
   });
 }
 function handleMouseSelection(root, activatable, pointerdown = false) {
   on(root, pointerdown ? "pointerdown" : "click", (e) => {
-    if (e.target.closest("ui-option")) {
-      let option = e.target.closest("ui-option");
+    if (e.target.closest("ui-option, ui-option-create")) {
+      let option = e.target.closest("ui-option, ui-option-create");
       if (option._disableable.isDisabled()) return;
       option._selectable?.trigger();
-      root.dispatchEvent(new CustomEvent("action", {
+      root.dispatchEvent(new CustomEvent("interaction", {
         bubbles: false,
-        cancelable: false
+        cancelable: false,
+        detail: { optionEl: option }
       }));
+      if (option.hasAttribute("action")) {
+        root.dispatchEvent(new CustomEvent("action", {
+          bubbles: false,
+          cancelable: false,
+          detail: { optionEl: option }
+        }));
+      }
       e.preventDefault();
       e.stopPropagation();
     }
@@ -5539,10 +5199,13 @@ function openPopoverWithMouse(el, popoverable) {
     }
   });
 }
-function togglePopoverWithMouse(button, popoverable) {
+function togglePopoverWithMouse(button, popoverable, input = null) {
   on(button, "click", () => {
     popoverable.setState(!popoverable.getState());
     button.focus();
+    if (popoverable.getState() && input) {
+      input.focus();
+    }
   });
 }
 function focusInputWhenPopoverOpens(input, popoverable) {
@@ -5552,10 +5215,14 @@ function focusInputWhenPopoverOpens(input, popoverable) {
     }
   });
 }
-function filterResultsByInput(input, filterable) {
-  filterable && on(input, "input", (e) => {
+function filterResultsByInput(list, input, filterable) {
+  on(input, "input", (e) => {
     filterable.filter(e.target.value);
   });
+  let observer = new MutationObserver(() => {
+    filterable.filter(input.value);
+  });
+  observer.observe(list, { childList: true });
 }
 function highlightInputContentsWhenFocused(input) {
   on(input, "focus", () => input.select());
@@ -5610,17 +5277,38 @@ function handleInputClearing(root, input, selectable, popoverable) {
   }
 }
 function handlePopoverClosing(root, selectable, popoverable, multiple) {
+  let closeOnInteraction = !multiple;
   let closeOnAction = !multiple;
   let closeOnSelect = !multiple;
   if (root.hasAttribute("close")) {
     let close = root.getAttribute("close");
-    closeOnAction = close === "" || close.split(" ").includes("action");
+    closeOnInteraction = close === "";
+    closeOnAction = close.split(" ").includes("action");
     closeOnSelect = close.split(" ").includes("select");
-    if (close === "none") closeOnAction = closeOnSelect = false;
+    if (close === "none") return;
   }
-  if (closeOnAction) {
-    root.addEventListener("action", (e) => {
-      popoverable.setState(false);
+  if (closeOnInteraction || closeOnAction) {
+    root.addEventListener("interaction", (e) => {
+      let optionEl = e.detail.optionEl;
+      if (!optionEl.hasAttribute("action")) {
+        popoverable.setState(false);
+        return;
+      }
+      setTimeout(() => {
+        if (!optionEl.hasAttribute("data-flux-loading") && !optionEl.hasAttribute("data-loading")) {
+          popoverable.setState(false);
+          return;
+        }
+        let observer = new MutationObserver(() => {
+          requestAnimationFrame(() => {
+            if (!root.querySelector("input[data-invalid]")) {
+              popoverable.setState(false);
+            }
+          });
+          observer.disconnect();
+        });
+        observer.observe(optionEl, { attributes: true, attributeFilter: ["data-loading", "data-flux-loading"] });
+      }, 10);
     });
   } else if (closeOnSelect) {
     selectable.onChange(() => {
@@ -5639,13 +5327,14 @@ function trackActiveDescendant(input, activatable, selectable) {
     activeEl && setAttribute2(input, "aria-activedescendant", activeEl.id);
   });
 }
-function handleAutocomplete(autocomplete, isStrict, root, input, selectable, popoverable) {
+function handleAutocomplete(autocomplete, isStrict, root, input, selectable, popoverable, filterable) {
   if (!autocomplete) {
     setAttribute2(input, "autocomplete", "off");
     setAttribute2(input, "aria-autocomplete", "none");
     return;
   }
   let setInputValue = (value3) => {
+    if (input.value === value3) return;
     input.value = value3;
     input.dispatchEvent(new Event("input", { bubbles: false }));
   };
@@ -5654,18 +5343,29 @@ function handleAutocomplete(autocomplete, isStrict, root, input, selectable, pop
   if (input.value !== "") {
     selectable.setState(input.value);
   }
+  let sync = () => {
+    if (selectable.isNotEmpty()) {
+      requestAnimationFrame(() => {
+        setInputValue(selectable.selectedTextValue());
+        if (isStrict) setAttribute2(input, "data-selected", selectable.selectedTextValue());
+      });
+    } else {
+      setInputValue("");
+      removeAttribute(input, "data-selected");
+    }
+  };
   queueMicrotask(() => {
-    selectable.onInitAndChange(() => {
-      input.value = selectable.selectedTextValue();
-    });
+    selectable.onInitAndChange(() => sync());
   });
-  root.addEventListener("action", (e) => {
-    setInputValue(selectable.selectedTextValue());
+  root.addEventListener("interaction", (e) => {
+    if (e.detail.optionEl._selectable?.isSelected()) sync();
   });
   if (isStrict) {
     popoverable.onChange(() => {
       if (!popoverable.getState()) {
-        setInputValue(selectable.selectedTextValue());
+        requestAnimationFrame(() => {
+          setInputValue(input.getAttribute("data-selected"));
+        });
       }
     });
   }
@@ -5675,6 +5375,1001 @@ function preventScrollWhenPopoverIsOpen(root, popoverable, except = []) {
   popoverable.onChange(() => {
     popoverable.getState() ? lock() : unlock();
   });
+}
+
+// js/pillbox.js
+var UIPillbox = class extends UISelect {
+  mount() {
+    this._disableable = new Disableable(this);
+    queueMicrotask(() => {
+      this._submittable.update(this._selectable.getState());
+    });
+    let input = this.input();
+    let list = this.list();
+    let multiple = this.hasAttribute("multiple");
+    let triggerEl = this.querySelector("ui-pillbox-trigger");
+    let listbox = this.querySelector("ui-options") || this;
+    let listId = initListbox(listbox, "options", multiple);
+    this._activatable = new ActivatableGroup(listbox, { filter: "data-hidden" });
+    if (this.hasAttribute("filter") && this.getAttribute("filter") !== "manual") {
+      this._filterable = new FilterableGroup(list);
+      this._filterable.onChange(() => {
+        this._activatable.clearActive();
+        if (this._filterable.hasResults()) {
+          this._activatable.activateFirst();
+        }
+      });
+      this.addEventListener("close", () => {
+        if (this._filterable) {
+          this._filterable.filter("");
+        }
+      });
+    }
+    let popoverEl = this.querySelector("[popover]:not(ui-tooltip > [popover])");
+    let popoverInputEl = popoverEl?.querySelector('input:not([type="hidden"])');
+    let inlineInputEl = this.querySelector("ui-selected input");
+    if (!popoverEl) throw new Error("Popover element not found");
+    if (popoverInputEl) {
+      let trigger = triggerEl;
+      let input2 = popoverInputEl;
+      let popover = popoverEl;
+      setAttribute2(trigger, "role", "button");
+      setAttribute2(input2, "aria-autocomplete", "list");
+      setAttribute2(input2, "aria-controls", listId);
+      setAttribute2(input2, "role", "combobox");
+      this._disableable.onInitAndChange((disabled) => {
+        if (disabled) {
+          trigger && setAttribute2(trigger, "disabled", "");
+          input2 && setAttribute2(input2, "disabled", "");
+        } else {
+          trigger && removeAttribute(trigger, "disabled");
+          input2 && removeAttribute(input2, "disabled");
+        }
+      });
+      this._popoverable = new Popoverable(popover);
+      this._anchorable = new Anchorable(popover, {
+        reference: trigger,
+        matchWidth: true,
+        position: this.hasAttribute("position") ? this.getAttribute("position") : void 0,
+        gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
+        offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0,
+        scrollY: false
+      });
+      trackActiveDescendant(input2, this._activatable, this._selectable);
+      preventInputEventsFromBubblingToSelectRoot(input2);
+      highlightInputContentsWhenFocused(input2);
+      this._filterable && filterResultsByInput(list, input2, this._filterable);
+      focusInputWhenPopoverOpens(input2, this._popoverable);
+      initPopover(this, trigger, popover, this._popoverable, this._anchorable);
+      preventScrollWhenPopoverIsOpen(this, this._popoverable, [input2]);
+      linkExpandedStateToPopover(trigger, this._popoverable);
+      handleInputClearing(this, input2, this._selectable, this._popoverable);
+      controlPopoverWithKeyboard(trigger, this._popoverable, this._activatable, this._selectable);
+      togglePopoverWithMouse(trigger, this._popoverable);
+      controlPopoverWithEscapeKey(this, this._popoverable);
+      handleKeyboardNavigation(input2, this._activatable);
+      handleKeyboardSearchNavigation(trigger, this._activatable, this._popoverable);
+      handleKeyboardSelection(this, input2, this._activatable);
+      handleMouseSelection(this, this._activatable);
+      controlActivationWithPopover(this._popoverable, this._activatable, this._selectable);
+      handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
+      openPopoverWithSpacebar(trigger);
+    } else if (inlineInputEl) {
+      let trigger = triggerEl;
+      let input2 = inlineInputEl;
+      let popover = popoverEl;
+      setAttribute2(trigger, "role", "button");
+      setAttribute2(input2, "aria-autocomplete", "list");
+      setAttribute2(input2, "aria-controls", listId);
+      setAttribute2(input2, "role", "combobox");
+      this._disableable.onInitAndChange((disabled) => {
+        if (disabled) {
+          trigger && setAttribute2(trigger, "disabled", "");
+          input2 && setAttribute2(input2, "disabled", "");
+        } else {
+          trigger && removeAttribute(trigger, "disabled");
+          input2 && removeAttribute(input2, "disabled");
+        }
+      });
+      this._popoverable = new Popoverable(popover, {
+        triggers: [input2, trigger]
+        // Make sure that focusing the input doesn't close the popover...
+      });
+      this._anchorable = new Anchorable(popover, {
+        reference: trigger,
+        matchWidth: true,
+        position: this.hasAttribute("position") ? this.getAttribute("position") : void 0,
+        gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
+        offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0
+      });
+      trackActiveDescendant(input2, this._activatable, this._selectable);
+      preventInputEventsFromBubblingToSelectRoot(input2);
+      highlightInputContentsWhenFocused(input2);
+      this._filterable && filterResultsByInput(list, input2, this._filterable);
+      focusInputWhenPopoverOpens(input2, this._popoverable);
+      initPopover(this, trigger, popover, this._popoverable, this._anchorable);
+      preventScrollWhenPopoverIsOpen(this, this._popoverable, [trigger]);
+      linkExpandedStateToPopover(trigger, this._popoverable);
+      handleInputClearing(this, input2, this._selectable, this._popoverable);
+      controlPopoverWithInput(input2, this._popoverable);
+      controlPopoverWithKeyboard(input2, this._popoverable, this._activatable, this._selectable);
+      openPopoverWithMouse(trigger, this._popoverable, input2);
+      controlPopoverWithEscapeKey(this, this._popoverable);
+      handleKeyboardNavigation(input2, this._activatable);
+      handleKeyboardSearchNavigation(trigger, this._activatable, this._popoverable);
+      handleKeyboardSelection(this, input2, this._activatable);
+      handleMouseSelection(this, this._activatable);
+      controlActivationWithPopover(this._popoverable, this._activatable, this._selectable);
+      handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
+      focusInputOnSelection(this, this._selectable, input2);
+      hideInputPlaceholderWhenNotEmpty(this._selectable, input2);
+      deselectLastItemWithBackspace(this._selectable, input2);
+      forwardClicksToInputWhenPopoverIsOpen(this._popoverable, trigger, input2);
+    } else {
+      let trigger = triggerEl;
+      let popover = popoverEl;
+      setAttribute2(trigger, "role", "combobox");
+      setAttribute2(trigger, "aria-controls", listId);
+      setAttribute2(trigger, "aria-autocomplete", "none");
+      this._disableable.onInitAndChange((disabled) => {
+        if (disabled) {
+          trigger && setAttribute2(trigger, "disabled", "");
+          input && setAttribute2(input, "disabled", "");
+        } else {
+          trigger && removeAttribute(trigger, "disabled");
+          input && removeAttribute(input, "disabled");
+        }
+      });
+      this._popoverable = new Popoverable(popover);
+      this._anchorable = new Anchorable(popover, {
+        reference: trigger,
+        matchWidth: true,
+        position: this.hasAttribute("position") ? this.getAttribute("position") : void 0,
+        gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
+        offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0
+      });
+      initPopover(this, trigger, popover, this._popoverable, this._anchorable);
+      preventScrollWhenPopoverIsOpen(this, this._popoverable);
+      linkExpandedStateToPopover(trigger, this._popoverable);
+      controlPopoverWithKeyboard(trigger, this._popoverable, this._activatable, this._selectable);
+      togglePopoverWithMouse(trigger, this._popoverable);
+      trackActiveDescendant(trigger, this._activatable, this._selectable);
+      controlPopoverWithEscapeKey(this, this._popoverable);
+      handleKeyboardNavigation(trigger, this._activatable);
+      handleKeyboardSearchNavigation(trigger, this._activatable, this._popoverable);
+      handleKeyboardSelection(this, trigger, this._activatable);
+      handleMouseSelection(this, this._activatable);
+      controlActivationWithPopover(this._popoverable, this._activatable, this._selectable);
+      handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
+      openPopoverWithSpacebar(trigger);
+    }
+    let observer = new MutationObserver(() => {
+      requestAnimationFrame(() => {
+        if (!this._popoverable || this._popoverable.getState()) {
+          let firstSelectedOption = this._selectable.selecteds().find((selected) => !selected.el._disableable.isDisabled())?.el;
+          this._activatable.activateSelectedOrFirst(firstSelectedOption);
+        } else {
+          this._activatable.clearActive();
+        }
+      });
+    });
+    observer.observe(list, { childList: true });
+  }
+  list() {
+    return this.querySelector("ui-options") || this;
+  }
+};
+var UIPillboxTrigger = class extends UIElement {
+  boot() {
+    if (this.querySelector("input")) {
+      setAttribute2(this, "tabindex", "-1");
+    } else {
+      setAttribute2(this, "tabindex", "0");
+    }
+    this._disableable = new Disableable(this);
+    let disableClick = (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        this.addEventListener("click", disableClick, true);
+      } else {
+        this.removeEventListener("click", disableClick, true);
+      }
+    });
+  }
+  mount() {
+  }
+};
+element("pillbox-trigger", UIPillboxTrigger);
+element("pillbox", UIPillbox);
+inject(({ css }) => css`ui-pillbox { display: block; }`);
+function openPopoverWithSpacebar(el) {
+  on(el, "keydown", (e) => {
+    if (e.key === " ") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      el.click();
+    }
+  });
+}
+function focusInputOnSelection(root, selectable, input) {
+  selectable.onChange(() => {
+    if (document.activeElement !== input && document.activeElement.closest("ui-pillbox") === root) {
+      input.focus();
+    }
+  });
+}
+function hideInputPlaceholderWhenNotEmpty(selectable, input) {
+  selectable.onInitAndChange(() => {
+    if (selectable.noneAreSelected()) {
+      setAttribute2(input, "placeholder", input.getAttribute("data-placeholder"));
+    } else {
+      setAttribute2(input, "placeholder", "");
+    }
+  });
+}
+function deselectLastItemWithBackspace(selectable, input) {
+  on(input, "keydown", (e) => {
+    if (input.value == "" && e.key === "Backspace") {
+      let last = selectable.findByValue(
+        selectable.getState().at(-1)
+      );
+      last?.deselect();
+    }
+  });
+}
+function forwardClicksToInputWhenPopoverIsOpen(popoverable, trigger, input) {
+  on(trigger, "click", (e) => {
+    if (popoverable.getState()) {
+      input.focus();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  });
+}
+
+// js/options.js
+var UIOptions = class extends UIElement {
+  boot() {
+    setAttribute2(this, "tabindex", "-1");
+    if (this.hasAttribute("popover")) {
+      this.addEventListener("lofi-close-popovers", () => {
+        this.hidePopover();
+      });
+    }
+    setAttribute2(this, "role", "listbox");
+  }
+  mount() {
+    let picker = this.closest("ui-autocomplete, ui-combobox, ui-select, ui-pillbox");
+    let input = picker?.input();
+    if (input) displayEmptyAndCreateOptions(this, input, picker._filterable);
+  }
+};
+var UIOption = class extends UIElement {
+  mount() {
+    let target = this;
+    this._disableable = new Disableable(target, {
+      disableWithParent: false
+    });
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        setAttribute2(target, "aria-disabled", "true");
+      } else {
+        removeAttribute(target, "aria-disabled");
+      }
+    });
+    let id = assignId(target, "option");
+    setAttribute2(target, "role", "option");
+    this._filterable = new Filterable(target, {
+      mirror: this,
+      keep: !!this.closest("ui-option-empty, ui-empty") || this.getAttribute("filter") === "manual"
+    });
+    this._activatable = new Activatable(target);
+    if (!this.hasAttribute("action")) {
+      this._selectable = new Selectable(target, {
+        value: this.getValue(),
+        label: this.getLabel(),
+        selectedLabel: this.getSelectedLabel(),
+        selectedInitially: this.hasAttribute("selected")
+      });
+    }
+    let observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === "selected") {
+          if (this.hasAttribute("selected")) this._selectable.setState(true);
+          else this._selectable.setState(false);
+        }
+      });
+    });
+    observer.observe(this, { attributeFilter: ["selected"] });
+  }
+  get selected() {
+    if (!this?._selectable) return false;
+    return this._selectable.isSelected();
+  }
+  set selected(value3) {
+    if (!this?._selectable) return false;
+    this._selectable.setState(value3);
+  }
+  getSelectedLabel() {
+    return this.getAttribute("selected-label");
+  }
+  getLabel() {
+    return this.hasAttribute("label") ? this.getAttribute("label") : this.textContent.trim();
+  }
+  getValue() {
+    return this.hasAttribute("value") ? this.getAttribute("value") : this.textContent.trim();
+  }
+};
+var UIOptionCreate = class extends UIElement {
+  mount() {
+    this._activatable = new Activatable(this);
+    this._filterable = new Filterable(this, { keep: true });
+    this._disableable = new Disableable(this, {
+      disableWithParent: false
+    });
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        setAttribute2(this, "aria-disabled", "true");
+      } else {
+        removeAttribute(this, "aria-disabled");
+      }
+    });
+  }
+};
+var UIOptionEmpty = class extends UIElement {
+};
+var UIEmpty = class extends UIOptionEmpty {
+};
+inject(({ css }) => css`ui-options:not([popover]), ui-option { display: block; cursor: default; }`);
+inject(({ css }) => css`ui-option-create { display: block; cursor: default; }`);
+inject(({ css }) => css`ui-option-empty { display: block; cursor: default; }`);
+inject(({ css }) => css`ui-empty { display: block; cursor: default; }`);
+element("option-create", UIOptionCreate);
+element("options", UIOptions);
+element("option", UIOption);
+element("option-empty", UIOptionEmpty);
+element("empty", UIEmpty);
+function normalizeScopedSelector(selector) {
+  if (!CSS.supports("selector(&)")) {
+    return selector.replace("&", ":scope");
+  }
+  return selector;
+}
+function displayEmptyAndCreateOptions(list, input, filterable) {
+  let empty = list.querySelector(normalizeScopedSelector("& > ui-option-empty, & > ui-empty"));
+  let create = list.querySelector(normalizeScopedSelector("& > ui-option-create"));
+  let minLength = create?.hasAttribute("min-length") ? parseInt(create.getAttribute("min-length")) : void 0;
+  setAttribute2(empty, "data-hidden", "");
+  if (create) setAttribute2(create, "data-hidden", "");
+  let isHidden = (el) => el.hasAttribute("data-hidden");
+  let isUnique = (el) => el.textContent.toLowerCase().trim() !== input.value.toLowerCase().trim();
+  let getItems = () => Array.from(list.querySelectorAll(normalizeScopedSelector("& > ui-option")));
+  let showLoading = () => {
+    if (empty.hasAttribute("when-loading")) {
+      let emptyContent = empty.textContent;
+      empty.textContent = empty.getAttribute("when-loading");
+      empty.__hideLoading = () => {
+        empty.textContent = emptyContent;
+        empty.__hideLoading = void 0;
+      };
+    }
+  };
+  let revertDisable;
+  let debounceEnable;
+  let refresh = () => {
+    clearTimeout(revertDisable);
+    clearTimeout(debounceEnable);
+    if (input.hasAttribute("data-flux-loading") || input.hasAttribute("data-loading")) return;
+    let items = getItems();
+    let isEmpty = items.every((i) => isHidden(i));
+    if (create) {
+      if (minLength && input.value.trim().length < minLength) {
+        setAttribute2(create, "data-hidden", "");
+      } else {
+        if (items.every((i) => isUnique(i))) {
+          removeAttribute(create, "data-hidden");
+        } else {
+          setAttribute2(create, "data-hidden", "");
+        }
+      }
+      if (isEmpty) create._activatable.activate(true);
+      let enable = () => {
+        removeAttribute(create, "disabled");
+      };
+      if (filterable) {
+        enable();
+      } else {
+        debounceEnable = setTimeout(enable, 150);
+      }
+    }
+    if (isEmpty && (!create || isHidden(create))) {
+      removeAttribute(empty, "data-hidden");
+    } else {
+      setAttribute2(empty, "data-hidden", "");
+    }
+    empty.__hideLoading?.();
+  };
+  if (filterable) {
+    filterable.onChange(() => refresh());
+    if (create) {
+      on(input, "input", () => {
+        if (minLength && input.value.trim().length < minLength) {
+          setAttribute2(create, "data-hidden", "");
+        }
+      });
+    }
+  } else {
+    let observer = new MutationObserver(() => {
+      requestAnimationFrame(() => refresh());
+    });
+    observer.observe(list, { childList: true });
+    observer.observe(input, { attributes: true, attributeFilter: ["data-loading", "data-flux-loading"] });
+    if (create) {
+      on(input, "input", (e) => {
+        clearTimeout(revertDisable);
+        clearTimeout(debounceEnable);
+        let isEmpty = getItems().every((i) => isHidden(i));
+        if (isEmpty && input.value.trim() === "" && !isHidden(create)) {
+          showLoading();
+          removeAttribute(empty, "data-hidden");
+          setAttribute2(create, "data-hidden", "");
+        } else if (input.value.trim() === "" && !isHidden(create)) {
+          setAttribute2(create, "data-hidden", "");
+        }
+        if (minLength && input.value.trim().length >= minLength) {
+          removeAttribute(create, "data-hidden");
+        }
+        setAttribute2(create, "disabled", "");
+        revertDisable = setTimeout(() => {
+          removeAttribute(create, "disabled");
+          if (isEmpty) create._activatable.activate();
+        }, 200);
+      });
+    }
+  }
+  refresh();
+}
+
+// js/calendar/date.js
+var DateValue = class _DateValue {
+  constructor(year, month, day = 1) {
+    this._date = new Date(Date.UTC(year, month - 1, day));
+  }
+  isBetween(min2, max2) {
+    if (!min2 && !max2) return true;
+    if (!min2) return this._date <= max2._date;
+    if (!max2) return this._date >= min2._date;
+    return this._date >= min2._date && this._date <= max2._date;
+  }
+  isSameDay(date) {
+    if (!date) return false;
+    return this._date.getUTCDate() === date._date.getUTCDate() && this._date.getUTCMonth() === date._date.getUTCMonth() && this._date.getUTCFullYear() === date._date.getUTCFullYear();
+  }
+  isBefore(date) {
+    if (!date) return false;
+    return this._date < date._date;
+  }
+  isAfter(date) {
+    if (!date) return false;
+    return this._date > date._date;
+  }
+  /** Immutable manipulators */
+  incrementDays(days) {
+    let copy = this.getCopy();
+    copy._date.setUTCDate(copy._date.getUTCDate() + days);
+    return copy;
+  }
+  addMonths(months) {
+    let copy = this.getCopy();
+    copy._date.setUTCMonth(copy._date.getUTCMonth() + months);
+    return copy;
+  }
+  addDays(days) {
+    let copy = this.getCopy();
+    copy._date.setUTCDate(copy._date.getUTCDate() + days);
+    return copy;
+  }
+  /** Getters */
+  getYear() {
+    return this._date.getUTCFullYear();
+  }
+  getMonth() {
+    return this._date.getUTCMonth() + 1;
+  }
+  getPaddedMonth() {
+    return String(this.getMonth()).padStart(2, "0");
+  }
+  getDay() {
+    return this._date.getUTCDate();
+  }
+  getPaddedDay() {
+    return String(this.getDay()).padStart(2, "0");
+  }
+  getDate() {
+    return this._date;
+  }
+  getCopy() {
+    return new _DateValue(this.getYear(), this.getMonth(), this.getDay());
+  }
+  getDayOfWeek() {
+    return this._date.getUTCDay();
+  }
+  getDaysInMonth() {
+    return new _DateValue(this.getYear(), this.getMonth() + 1, 0).getDay();
+  }
+  getFirstDayOfMonth() {
+    return new _DateValue(this.getYear(), this.getMonth(), 1).getDayOfWeek();
+  }
+  getWeekNumber() {
+    let firstDayOfYear = new Date(Date.UTC(this._date.getUTCFullYear(), 0, 1));
+    let firstThursday = new Date(firstDayOfYear);
+    firstThursday.setUTCDate(1 + (11 - firstDayOfYear.getUTCDay()) % 7);
+    let targetThursday = new Date(this._date);
+    targetThursday.setUTCDate(this._date.getUTCDate() + (11 - this._date.getUTCDay()) % 7);
+    let weeksBetween = Math.floor((targetThursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1e3));
+    return weeksBetween + 1;
+  }
+  /** Setters */
+  setDay(day) {
+    this._date.setUTCDate(day);
+  }
+  setMonth(month) {
+    this._date.setUTCMonth(month - 1);
+  }
+  setYear(year) {
+    this._date.setUTCFullYear(year);
+  }
+  /** Static factories: */
+  static fromIsoDateString(isoString) {
+    if (!isoString) return null;
+    let [year, month, day] = isoString.split("T")[0]?.split("-")?.map(Number);
+    return new _DateValue(year, month, day);
+  }
+  static fromLocalDate(date) {
+    if (!date) return null;
+    return new _DateValue(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+  }
+  static fromDate(date) {
+    if (!date) return null;
+    return new _DateValue(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  }
+  static fromParts(year, month, day) {
+    return new _DateValue(year, month, day);
+  }
+  static today() {
+    return _DateValue.fromDate(/* @__PURE__ */ new Date());
+  }
+  static firstDayOfMonth(date) {
+    return new _DateValue(date.getYear(), date.getMonth(), 1);
+  }
+  /** Formats */
+  toIsoDateString() {
+    return [this.getYear(), this.getPaddedMonth(), this.getPaddedDay()].join("-");
+  }
+  toParts() {
+    return [this.getYear(), this.getMonth(), this.getDay()];
+  }
+  toDate() {
+    return new Date(this.getYear(), this.getMonth() - 1, this.getDay());
+  }
+  toFormattedString(locale, options) {
+    return this.toDate().toLocaleDateString(locale, options);
+  }
+};
+
+// js/calendar/render.js
+function renderMonth(monthEl, config, viewState, metadata) {
+  let headingTemplate = monthEl.querySelector('template[name="heading"]');
+  let weekdayTemplate = monthEl.querySelector('template[name="weekday"]');
+  let weekTemplate = monthEl.querySelector('template[name="week"]');
+  headingTemplate && renderHeading(headingTemplate, config, viewState);
+  weekdayTemplate && renderWeekdays(weekdayTemplate, config);
+  weekTemplate && renderDates(weekTemplate, config, viewState, metadata);
+}
+function renderHeading(template, config, viewState) {
+  renderTemplate(template, (hydrate) => {
+    return hydrate({
+      slots: {
+        default: new Intl.DateTimeFormat(config.locale, {
+          month: template.hasAttribute("display") ? template.getAttribute("display") : "long",
+          year: "numeric",
+          timeZone: "UTC"
+        }).format(new DateValue(viewState.year, viewState.month).getDate())
+      }
+    });
+  });
+}
+function renderWeekdays(template, config) {
+  let format = (date) => {
+    if (template.hasAttribute("display")) {
+      return new Intl.DateTimeFormat(config.locale, { weekday: template.getAttribute("display") }).format(date);
+    }
+    let safeTwoCharLocales = ["en", "es", "de", "fr", "it", "pt"];
+    if (safeTwoCharLocales.includes(config.locale.split("-")[0])) {
+      let formatter2 = new Intl.DateTimeFormat(config.locale, { weekday: "short" });
+      return formatter2.format(date).slice(0, 2);
+    }
+    let formatter = new Intl.DateTimeFormat(config.locale, { weekday: "narrow" });
+    return formatter.format(date);
+  };
+  let weekdays = Array.from({ length: 7 }, (_, idx) => {
+    let adjustedIdx = (idx + config.startDay) % 7;
+    let date = new Date(2024, 0, adjustedIdx + 7);
+    return format(date);
+  });
+  renderTemplate(template, (hydrate) => {
+    return weekdays.map((weekday) => hydrate({ slots: { default: weekday } }));
+  });
+}
+function renderDates(template, config, viewState, metadata) {
+  let month = viewState.month;
+  let year = viewState.year;
+  let firstDay = (new DateValue(year, month).getFirstDayOfMonth() - config.startDay + 7) % 7;
+  let totalDays = new DateValue(year, month).getDaysInMonth();
+  let [prevYear, prevMonth] = new DateValue(year, month).addMonths(-1).toParts();
+  let prevMonthDays = new DateValue(prevYear, prevMonth).getDaysInMonth();
+  let [displayDates, actualDates] = [[], []];
+  for (let i = 0; i < firstDay; i++) {
+    displayDates.push(0);
+    let prevDate = prevMonthDays - firstDay + i + 1;
+    actualDates.push(new DateValue(prevYear, prevMonth, prevDate).toIsoDateString());
+  }
+  for (let i = 1; i <= totalDays; i++) {
+    displayDates.push(i);
+    actualDates.push(new DateValue(year, month, i).toIsoDateString());
+  }
+  let totalCells = firstDay + totalDays;
+  let remainingDays = (7 - totalCells % 7) % 7;
+  let [nextYear, nextMonth] = new DateValue(year, month).addMonths(1).toParts();
+  for (let i = 1; i <= remainingDays; i++) {
+    displayDates.push(0);
+    actualDates.push(new DateValue(nextYear, nextMonth, i).toIsoDateString());
+  }
+  if (config.fixedWeeks) {
+    let currentWeeks = Math.ceil(displayDates.length / 7);
+    let targetWeeks = config.fixedWeeks;
+    let weeksDiff = targetWeeks - currentWeeks;
+    if (weeksDiff > 0) {
+      for (let i = 0; i < weeksDiff * 7; i++) {
+        displayDates.push(0);
+        actualDates.push(DateValue.fromIsoDateString(actualDates[actualDates.length - 1]).addDays(1).toIsoDateString());
+      }
+    } else if (weeksDiff < 0) {
+      displayDates.length = targetWeeks * 7;
+      actualDates.length = targetWeeks * 7;
+    }
+  }
+  let splitIntoWeeks = (arr) => Array.from(
+    { length: Math.ceil(arr.length / 7) },
+    (_, idx) => arr.slice(idx * 7, (idx + 1) * 7)
+  );
+  let displayWeeks = splitIntoWeeks(displayDates);
+  let actualWeeks = splitIntoWeeks(actualDates);
+  renderTemplate(template, (hydrate) => {
+    return displayWeeks.map((week, weekIdx) => {
+      let weekEl = hydrate();
+      let actualWeekDates = actualWeeks[weekIdx];
+      let numberTemplate = weekEl.querySelector('template[name="number"]');
+      if (numberTemplate) {
+        let fourthDayIdx = (4 - config.startDay + 7) % 7;
+        let weekNumber = DateValue.fromIsoDateString(actualWeekDates[fourthDayIdx]).getWeekNumber();
+        renderTemplate(numberTemplate, (hydrate2) => {
+          return hydrate2({ slots: { default: weekNumber } });
+        });
+      }
+      renderTemplate(weekEl.querySelector('template[name="day"]'), (hydrate2) => {
+        return week.map((day, dayIdx) => {
+          if (day === 0) {
+            let weekDate = DateValue.fromIsoDateString(actualWeekDates[dayIdx]);
+            let dayNumber = weekDate.getDay();
+            return hydrate2({
+              slots: { default: dayNumber },
+              attrs: { "data-date": actualWeekDates[dayIdx], "data-outside": "" }
+            });
+          }
+          let date = DateValue.fromIsoDateString(actualWeekDates[dayIdx]);
+          let dayEl = hydrate2({
+            slots: { default: day },
+            attrs: { "data-date": actualWeekDates[dayIdx] }
+          });
+          let subtext = metadata.subtext(date);
+          let details = metadata.details(date);
+          let variant = metadata.variant(date);
+          if (![false, null, void 0].includes(variant)) {
+            dayEl.dataset.dateVariant = variant;
+          }
+          if (![false, null, void 0].includes(subtext)) {
+            let template2 = dayEl.querySelector('template[name="subtext"]');
+            template2 && renderTemplate(template2, (hydrate3) => hydrate3({ slots: { default: subtext } }));
+          }
+          if (![false, null, void 0].includes(details)) {
+            let template2 = dayEl.querySelector('template[name="details"]');
+            template2 && renderTemplate(template2, (hydrate3) => hydrate3({ slots: { default: details } }));
+          }
+          return dayEl;
+        });
+      });
+      return weekEl;
+    });
+  });
+}
+function updateMonth(el, disabled, config, viewState, selectable, validator) {
+  let getFirstDateToMakeTabbable = (month, year) => {
+    return selectable.lowerBound(() => {
+      let isCurrentMonth = DateValue.today().getMonth() === month && DateValue.today().getYear() === year;
+      return isCurrentMonth ? DateValue.today() : new DateValue(year, month);
+    });
+  };
+  let tabbable = getFirstDateToMakeTabbable(viewState.month, viewState.year);
+  el.querySelectorAll("[data-date]").forEach((cell) => {
+    setAttribute2(cell, "role", "gridcell");
+    let button = cell.querySelector("button,ui-button");
+    let date = dateFromCell(cell);
+    if (!date) return;
+    button ? setAttribute2(button, "aria-label", date.toFormattedString(config.locale, { day: "numeric", month: "long", year: "numeric", weekday: "long" })) : setAttribute2(cell, "aria-label", date.toFormattedString(config.locale, { day: "numeric", month: "long", year: "numeric", weekday: "long" }));
+    if (!validator.isValid(date)) {
+      setAttribute2(cell, "disabled", "");
+      setAttribute2(cell, "aria-disabled", "true");
+      button && setAttribute2(button, "disabled", "");
+      validator.isUnavailable(date) && setAttribute2(cell, "data-unavailable", "");
+    } else if (disabled) {
+      setAttribute2(cell, "disabled", "");
+      setAttribute2(cell, "aria-disabled", "true");
+      button && setAttribute2(button, "disabled", "");
+    } else {
+      removeAttribute(cell, "disabled");
+      removeAttribute(cell, "data-unavailable");
+      removeAttribute(cell, "aria-disabled");
+      button && removeAttribute(button, "disabled");
+    }
+    if (DateValue.today().isSameDay(date)) {
+      setAttribute2(cell, "data-today", "");
+    } else {
+      removeAttribute(cell, "data-today", "");
+    }
+    selectable.attributes(cell, date);
+    if (date.isSameDay(tabbable)) {
+      button && setAttribute2(button, "tabindex", "0");
+    } else {
+      button && setAttribute2(button, "tabindex", "-1");
+    }
+  });
+}
+function renderTemplate(template, callback) {
+  if (!template) return;
+  let cleanup = () => {
+    let sibling = template.nextElementSibling;
+    while (sibling && sibling.hasAttribute("data-appended")) {
+      let toRemove = sibling;
+      sibling = sibling.nextElementSibling;
+      toRemove.remove();
+    }
+  };
+  cleanup();
+  let hydrated = callback(({ slots = {}, attrs = {} } = {}) => {
+    let clone = template.content.cloneNode(true).firstElementChild;
+    Object.entries(slots).forEach(([key, value3]) => {
+      let slotNodes = key === "default" ? clone.querySelectorAll("slot:not([name])") : clone.querySelectorAll(`slot[name="${key}"]`);
+      slotNodes.forEach((i) => i.replaceWith(
+        typeof value3 === "string" ? document.createTextNode(value3) : value3
+      ));
+    });
+    clone.querySelectorAll("slot").forEach((slot) => slot.remove());
+    Object.entries(attrs).forEach(([key, value3]) => {
+      clone.setAttribute(key, value3);
+    });
+    return clone;
+  });
+  hydrated = Array.isArray(hydrated) ? hydrated : [hydrated];
+  hydrated.reverse().forEach((node) => {
+    setAttribute2(node, "data-appended", "");
+    template.after(node);
+  });
+  return { cleanup };
+}
+function dateFromCell(cell) {
+  if (!cell) return null;
+  if (!cell.hasAttribute("data-date")) return null;
+  return DateValue.fromIsoDateString(cell.getAttribute("data-date"));
+}
+
+// js/time-picker/selectable.js
+var SelectableModes = class {
+  static SINGLE = "single";
+  static MULTIPLE = "multiple";
+};
+var ObservableTrigger = class {
+  static SELECTION = "selection";
+  static ACTIVATION = "activation";
+  static VIEW_CHANGE = "view-change";
+};
+var Selectable2 = class _Selectable {
+  constructor(selection, config, observable) {
+    this.config = config;
+    this.observable = observable;
+    this.selection = selection;
+  }
+  select(value3) {
+    let previousSelection = this.selection;
+    this.selection = this.selection.select(value3, this.config);
+    if (this.selection.shouldNotify(previousSelection)) this.observable.notify(ObservableTrigger.SELECTION);
+    else this.observable.notify(ObservableTrigger.ACTIVATION);
+  }
+  setValue(value3) {
+    let previousSelection = this.selection;
+    this.selection = _Selectable.createSelectionFromValue(value3, this.config);
+    if (this.selection.shouldNotify(previousSelection)) this.observable.notify(ObservableTrigger.SELECTION);
+    else this.observable.notify(ObservableTrigger.ACTIVATION);
+  }
+  getValue() {
+    return this.selection.value();
+  }
+  isSelectable(value3) {
+    return this.selection.selectable(value3, this.config);
+  }
+  /** Passthrough methods */
+  contains(...params) {
+    return this.selection.contains(...params);
+  }
+  hasSelection() {
+    return this.selection.hasSelection();
+  }
+  lowerBound(...params) {
+    return this.selection.lowerBound(...params);
+  }
+  upperBound(...params) {
+    return this.selection.upperBound(...params);
+  }
+  display(...params) {
+    return this.selection.display(this.config, ...params);
+  }
+  attributes(...params) {
+    return this.selection.attributes(...params);
+  }
+  static createSelectionFromValue(value3, config) {
+    if (config.mode === SelectableModes.MULTIPLE) {
+      value3 ??= [];
+      return new MultipleSelection(value3);
+    } else {
+      if (!value3) return new NoneSelection();
+      return new SingleSelection(value3);
+    }
+  }
+  static createFromValueStringAttribute(value3, config, observable) {
+    let selection = _Selectable.createSelectionFromValueStringAttribute(value3, config);
+    return new _Selectable(selection, config, observable);
+  }
+  static createSelectionFromValueStringAttribute(value3, config) {
+    if (config.mode === SelectableModes.MULTIPLE) {
+      value3 = value3 ? value3.split(",").map((i) => i.trim()) : [];
+    }
+    return _Selectable.createSelectionFromValue(value3, config);
+  }
+};
+var Selection = class {
+  contains() {
+  }
+  shouldNotify(previousSelection) {
+    return true;
+  }
+  hasSelection() {
+    return false;
+  }
+  lowerBound(fallback) {
+    return value(fallback);
+  }
+  upperBound(fallback) {
+    return this.lowerBound(fallback);
+  }
+  selectable(value3, config) {
+    return true;
+  }
+  display(config) {
+  }
+  value() {
+  }
+  attributes(el, value3) {
+    if (this.contains(value3)) {
+      setAttribute2(el, "data-selected", "");
+      setAttribute2(el, "aria-selected", "true");
+    } else {
+      removeAttribute(el, "data-selected");
+      setAttribute2(el, "aria-selected", "false");
+    }
+  }
+};
+var NoneSelection = class _NoneSelection extends Selection {
+  contains() {
+    return false;
+  }
+  shouldNotify(selection) {
+    return !(selection instanceof _NoneSelection);
+  }
+  hasSelection() {
+    return false;
+  }
+  lowerBound(fallback) {
+    return value(fallback);
+  }
+  select(value3) {
+    return new SingleSelection(value3);
+  }
+  display(config) {
+    return "";
+  }
+  value() {
+    return null;
+  }
+};
+var SingleSelection = class _SingleSelection extends Selection {
+  constructor(value3) {
+    super();
+    this._value = value3;
+  }
+  contains(value3) {
+    return this._value === value3;
+  }
+  shouldNotify(previousSelection) {
+    if (previousSelection instanceof _SingleSelection && this._value === previousSelection._value) return false;
+    return true;
+  }
+  hasSelection() {
+    return true;
+  }
+  lowerBound() {
+    return this._value;
+  }
+  select(value3) {
+    if (this._value === value3) return new NoneSelection();
+    return new _SingleSelection(value3);
+  }
+  display(config) {
+    return formatTime(this._value, config.timeFormat, config.locale);
+  }
+  value() {
+    return this._value;
+  }
+};
+var MultipleSelection = class _MultipleSelection extends Selection {
+  constructor(values) {
+    super();
+    this._values = values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
+  }
+  contains(value3) {
+    return this._values.some((i) => i === value3);
+  }
+  shouldNotify(previousSelection) {
+    if (previousSelection instanceof _MultipleSelection && this._values.every((i) => previousSelection._values.includes(i)) && previousSelection._values.every((i) => this._values.includes(i))) return false;
+    return true;
+  }
+  hasSelection() {
+    return this._values.length > 0;
+  }
+  lowerBound(fallback) {
+    let sortedValues = this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
+    return sortedValues[0] || value(fallback);
+  }
+  upperBound(fallback) {
+    let sortedValues = this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1);
+    return sortedValues[sortedValues.length - 1] || value(fallback);
+  }
+  select(value3) {
+    let containsValue = this._values.some((i) => i === value3);
+    if (containsValue) return new _MultipleSelection(this._values.filter((i) => i !== value3));
+    return new _MultipleSelection([...this._values, value3]);
+  }
+  display(config) {
+    return this._values.sort((a, b) => timeInMinutes(a) < timeInMinutes(b) ? -1 : 1).map((i) => formatTime(i, config.timeFormat, config.locale)).join(", ");
+  }
+  value() {
+    return this._values;
+  }
+};
+function value(i = null) {
+  return typeof i === "function" ? i() : i;
 }
 
 // js/time-picker/trigger.js
@@ -5734,6 +6429,7 @@ var UITimePickerTrigger = class extends UIElement {
     this.initHourInputListeners();
     this.initMinuteInputListeners();
     this.meridiemInput && this.initMeridiemInputListeners();
+    this.meridiemInput && this.setMeridiemWidthBasedOnLocale();
     this.picker.observable.subscribe(ObservableTrigger.SELECTION, () => {
       this.updateInputsFromSelectable(this.picker.selectable);
     });
@@ -5929,6 +6625,13 @@ var UITimePickerTrigger = class extends UIElement {
       highlightInputContents(this.meridiemInput);
     });
   }
+  // Not all locales have the same width meridiem, like US is `AM` but Canada is `a.m.`,
+  // so we need to calculate the width based on the locale...
+  setMeridiemWidthBasedOnLocale() {
+    let meridiem = getLocalisedMeridiem(12, this.picker.config.locale);
+    if (!meridiem) return;
+    this.meridiemInput.style.width = `calc(${meridiem.length}ch + 2px)`;
+  }
 };
 function initCursorSelectionListeners(input) {
   input.addEventListener("focus", (e) => {
@@ -6014,15 +6717,23 @@ var UITimePicker = class extends UIControl {
     };
     this.observable = new Observable();
     this._controllable = new Controllable(this, { bubbles: true });
-    this.selectable = Selectable.createFromValueStringAttribute(this.getAttribute("value"), this.config, this.observable);
+    this._submittable = new Submittable(this, {
+      name: this.getAttribute("name"),
+      value: this.getAttribute("value"),
+      includeWhenEmpty: false
+    });
+    this.selectable = Selectable2.createFromValueStringAttribute(this.getAttribute("value"), this.config, this.observable);
     this._controllable.getter(() => this.selectable.getValue());
     let detangled = detangle();
     this._controllable.setter(detangled((value3) => {
       this.selectable.setValue(value3);
     }));
-    this.observable.subscribe(ObservableTrigger.SELECTION, () => {
+    this.observable.subscribe(ObservableTrigger.SELECTION, detangled(() => {
       this._controllable.dispatch();
       this.dispatchEvent(new CustomEvent("input", { bubbles: false }));
+    }));
+    this.observable.subscribe(ObservableTrigger.SELECTION, () => {
+      this._submittable.update(this.selectable.getValue());
     });
     this._disableable = new Disableable(this);
     if (!this.config.dropdown) return;
@@ -6089,6 +6800,7 @@ var UITimePicker = class extends UIControl {
   }
   clear() {
     this.selectable.setValue(null);
+    this.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
   }
   interval() {
     if (this.hasAttribute("interval")) {
@@ -6370,7 +7082,9 @@ function controlActivationWithPopover2(popoverable, activatable, selectable, ope
         firstOptionToActivate = findCloestOptionToOpenTo(activatable, openTo);
       }
       setTimeout(() => {
-        activatable.activateSelectedOrFirst(firstSelectedOption || firstOptionToActivate);
+        let optionToScrollTo = firstSelectedOption || firstOptionToActivate;
+        activatable.activateSelectedOrFirst(optionToScrollTo);
+        optionToScrollTo?.scrollIntoView({ block: "nearest" });
       });
     } else {
       activatable.clearActive();
@@ -6417,182 +7131,6 @@ function generateTimes({ interval = 30, timeFormat = "auto", locale = navigator.
   }
   return times;
 }
-
-// js/mixins/dialogable.js
-var lastMouseDownEvent = null;
-document.addEventListener("mousedown", (event) => lastMouseDownEvent = event);
-var Dialogable = class extends Mixin {
-  boot({ options }) {
-    options({
-      clickOutside: true,
-      triggers: []
-    });
-    this.onChanges = [];
-    this.state = false;
-    this.stopDialogFromFocusingTheFirstElement();
-    let triggers = this.options().triggers;
-    let observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName !== "open") return;
-        this.el.hasAttribute("open") ? this.state = true : this.state = false;
-      });
-      this.onChanges.forEach((i) => i());
-    });
-    observer.observe(this.el, { attributeFilter: ["open"] });
-    if (this.options().clickOutside) {
-      this.el.addEventListener("click", (e) => {
-        if (e.target !== this.el) {
-          lastMouseDownEvent = null;
-          return;
-        }
-        if (lastMouseDownEvent && clickHappenedOutside(this.el, lastMouseDownEvent) && clickHappenedOutside(this.el, e)) {
-          this.cancel();
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        lastMouseDownEvent = null;
-      });
-    }
-    if (this.el.hasAttribute("open")) {
-      this.state = true;
-      this.hide();
-      this.show();
-    }
-  }
-  onChange(callback) {
-    this.onChanges.push(callback);
-  }
-  show() {
-    if (!this.el.isConnected) return;
-    this.el.showModal();
-  }
-  hide() {
-    this.el.close();
-  }
-  toggle() {
-    this.state ? this.hide() : this.show();
-  }
-  cancel() {
-    let event = new Event("cancel", { bubbles: false, cancelable: true });
-    this.el.dispatchEvent(event);
-    if (!event.defaultPrevented) {
-      this.hide();
-    }
-  }
-  getState() {
-    return this.state;
-  }
-  setState(value3) {
-    value3 ? this.show() : this.hide();
-  }
-  // By default, browsers focus the first focusable element inside a dialog when it is opened. This is bad for screen readers because
-  // the focus could potentially be at the end of the dialog skipping all of the content. This also causes issues for iOS devices
-  // as when inputs are focused and the keyboard is shown, hiding half of the dialog content...
-  stopDialogFromFocusingTheFirstElement() {
-    let placeholder = document.createElement("div");
-    placeholder.setAttribute("data-flux-focus-placeholder", "");
-    placeholder.setAttribute("data-appended", "");
-    placeholder.setAttribute("tabindex", "0");
-    this.el.prepend(placeholder);
-    this.onChange(() => {
-      setAttribute2(placeholder, "style", this.state ? "display: none" : "display: block");
-      if (this.state && isSafari() && !this.el.hasAttribute("autofocus") && this.el.querySelectorAll("[autofocus]").length === 0) {
-        setTimeout(() => {
-          this.el.setAttribute("tabindex", "-1");
-          this.el.focus();
-          this.el.blur();
-        });
-      }
-    });
-  }
-};
-function clickHappenedOutside(el, event) {
-  let rect = el.getBoundingClientRect();
-  let x = event.clientX;
-  let y = event.clientY;
-  let isInside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-  return !isInside;
-}
-
-// js/mixins/closeable.js
-var Closeable = class extends Mixin {
-  boot() {
-    this.onCloses = [];
-  }
-  onClose(callback) {
-    this.onCloses.push(callback);
-  }
-  close() {
-    this.onCloses.forEach((callback) => callback());
-  }
-};
-
-// js/modal.js
-var UIModal = class extends UIElement {
-  boot() {
-    this.querySelectorAll("[data-appended]").forEach((el) => el.remove());
-    this._controllable = new Controllable(this, { disabled: this.hasAttribute("disabled") });
-    let button = this.button();
-    let dialog = this.dialog();
-    if (!dialog) return;
-    dialog._dialogable = new Dialogable(dialog, {
-      clickOutside: !this.hasAttribute("disable-click-outside")
-    });
-    dialog._closeable = new Closeable(dialog);
-    dialog._closeable.onClose(() => dialog._dialogable.hide());
-    this._controllable.initial((initial) => initial && dialog._dialogable.show());
-    this._controllable.getter(() => dialog._dialogable.getState());
-    let detangled = detangle();
-    this._controllable.setter(detangled((value3) => {
-      dialog._dialogable.setState(value3);
-    }));
-    dialog._dialogable.onChange(detangled(() => {
-      this._controllable.dispatch();
-    }));
-    let refresh = () => {
-      if (dialog._dialogable.getState()) {
-        setAttribute2(this, "data-open", "");
-        button?.setAttribute("data-open", "");
-        setAttribute2(dialog, "data-open", "");
-      } else {
-        removeAttribute(this, "data-open");
-        button?.removeAttribute("data-open");
-        removeAttribute(dialog, "data-open");
-      }
-    };
-    dialog._dialogable.onChange(() => refresh());
-    refresh();
-    let { lock, unlock } = lockScroll();
-    dialog._dialogable.onChange(() => {
-      dialog._dialogable.getState() ? lock() : unlock();
-    });
-    button && on(button, "click", (e) => {
-      dialog._dialogable.show();
-    });
-  }
-  unmount() {
-    if (this.dialog()?._dialogable?.getState()) {
-      let { unlock } = lockScroll();
-      unlock();
-    }
-  }
-  button() {
-    let button = this.querySelector("button,ui-button");
-    let dialog = this.dialog();
-    if (dialog?.contains(button)) return;
-    return button;
-  }
-  dialog() {
-    return this.querySelector("dialog");
-  }
-  showModal() {
-    let dialog = this.dialog();
-    if (!dialog) return;
-    dialog.showModal();
-  }
-};
-inject(({ css }) => css`dialog, ::backdrop { margin: auto; }`);
-element("modal", UIModal);
 
 // js/mixins/disclosable.js
 var Disclosable = class extends Mixin {
@@ -6800,15 +7338,15 @@ var UICheckboxGroup = class _UICheckboxGroup extends UIControl {
     let detangled = detangle();
     checkAll._selectable.onChange(detangled(() => {
       if (checkAll.indeterminate) {
-        this._selectable.selectAll();
+        this.selectAll();
         checkAll.checked = true;
         checkAll.indeterminate = false;
       } else if (checkAll.checked) {
-        this._selectable.selectAll();
+        this.selectAll();
         checkAll.checked = true;
         checkAll.indeterminate = false;
       } else {
-        this._selectable.deselectAll();
+        this.deselectAll();
         checkAll.checked = false;
         checkAll.indeterminate = false;
       }
@@ -6829,6 +7367,12 @@ var UICheckboxGroup = class _UICheckboxGroup extends UIControl {
     }));
     setCheckAllIndeterminate();
   }
+  selectAll() {
+    this.walker().filter((el) => !el.use(Selectable).isSelected()).map((el) => el.use(Selectable).select());
+  }
+  deselectAll() {
+    this.walker().filter((el) => el.use(Selectable).isSelected()).map((el) => el.use(Selectable).deselect());
+  }
   walker() {
     return walker(this, (el, { skip, reject }) => {
       if (el instanceof _UICheckboxGroup) return reject();
@@ -6842,7 +7386,7 @@ var UICheckbox = class extends UIControl {
     this.isIndeterminate = false;
     this._disableable = new Disableable(this);
     if (this.hasAttribute("all")) {
-      this._selectable = new Selectable2(button, {
+      this._selectable = new Selectable(button, {
         ungrouped: true,
         toggleable: true,
         value: this.hasAttribute("value") ? this.getAttribute("value") : Math.random().toString(36).substring(2, 10),
@@ -6855,7 +7399,7 @@ var UICheckbox = class extends UIControl {
         this.closest("ui-checkbox-group")?.initCheckAll(this);
       });
     } else {
-      this._selectable = new Selectable2(button, {
+      this._selectable = new Selectable(button, {
         toggleable: true,
         dataAttr: "data-checked",
         ariaAttr: "aria-checked",
@@ -7063,6 +7607,7 @@ var UIFileUpload = class extends UIElement {
     this._files = [];
     this.inputEl = this.querySelector('input[data-slot="receiver"]');
     if (this.inputEl) {
+      this.forwardAcceptAttribute();
       this.configureSRInput();
     }
     this.triggerEl = this.findTriggerElement();
@@ -7162,6 +7707,11 @@ var UIFileUpload = class extends UIElement {
   clear() {
     this.inputEl.value = null;
     this._files = [];
+  }
+  forwardAcceptAttribute() {
+    if (this.hasAttribute("accept")) {
+      this.inputEl.setAttribute("accept", this.getAttribute("accept"));
+    }
   }
   configureSRInput() {
     this.inputEl.tabIndex = -1;
@@ -8019,7 +8569,8 @@ var UICalendar = class extends UIElement {
       max: this.getMaxDate(elDrivingConfig),
       maxRange: elDrivingConfig.hasAttribute("max-range") ? parseInt(elDrivingConfig.getAttribute("max-range")) : null,
       minRange: elDrivingConfig.hasAttribute("min-range") ? parseInt(elDrivingConfig.getAttribute("min-range")) : null,
-      startDay: elDrivingConfig.hasAttribute("start-day") ? parseInt(elDrivingConfig.getAttribute("start-day")) : (new Intl.Locale(locale).weekInfo?.firstDay || 7) % 7,
+      // Newer browsers use getWeekInfo() but have removed weekInfo (from Chrome 143+), older browsers use weekInfo, so the startDay calculation needs to account for that...
+      startDay: elDrivingConfig.hasAttribute("start-day") ? parseInt(elDrivingConfig.getAttribute("start-day")) : (new Intl.Locale(locale).getWeekInfo?.()?.firstDay ?? new Intl.Locale(locale).weekInfo?.firstDay ?? 7) % 7,
       unavailable: this.getUnavailableDates(elDrivingConfig),
       locale,
       fixedWeeks: elDrivingConfig.hasAttribute("fixed-weeks") ? 6 : null
@@ -8031,7 +8582,7 @@ var UICalendar = class extends UIElement {
     this.selectable = Selectable3.createFromValueStringAttribute(elDrivingConfig.getAttribute("value"), this.config, this.observable);
     this.metadata = new DateMetadata(this.observable);
     this.validator = new Validator(this.selectable, this.metadata, this.config);
-    let openToDate = this.selectable.lowerBound() === null && elDrivingConfig.hasAttribute("open-to") ? this.getOpenTo(elDrivingConfig) : this.selectable.lowerBound(() => DateValue.today());
+    let openToDate = elDrivingConfig.hasAttribute("open-to") && (elDrivingConfig.hasAttribute("force-open-to") || this.selectable.lowerBound() === null) ? this.getOpenTo(elDrivingConfig) : this.selectable.lowerBound(() => DateValue.today());
     this.viewState = new CalendarViewState(openToDate.getMonth(), openToDate.getYear(), this.config, this.observable);
     this._disableable = new Disableable(this, {
       disableWithParent: false
@@ -8777,6 +9328,7 @@ var UIDatePicker = class extends UIControl {
   }
   clear() {
     this.selectable.setValue(null);
+    this.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
   }
   open() {
     this._dialogable.setState(true);
@@ -8931,6 +9483,174 @@ function handlePopoverClosing3(root, mode, observable, selectable, dialogable) {
     }
   });
 }
+
+// js/composer.js
+var UIComposer = class extends UIControl {
+  boot() {
+    setAttribute2(this, "role", "group");
+    this.config = {
+      submit: this.getAttribute("submit") || "cmd-enter",
+      rows: Number(this.getAttribute("rows")) || 2,
+      maxRows: Number(this.getAttribute("max-rows")) || 10
+    };
+    let textarea = this.querySelector("textarea");
+    let editor = this.querySelector("ui-editor");
+    if (textarea) {
+      this._inputEl = textarea;
+      this._initTextarea();
+    } else {
+      this._inputEl = editor;
+      this._initEditor();
+    }
+    this.state = {
+      onChanges: [],
+      getValue: () => {
+        return this._inputEl.value;
+      },
+      setValue: (value3) => {
+        this._inputEl.value = value3;
+        this.state.onChanges.forEach((i) => i(this.state.getValue()));
+      },
+      onChange: (callback) => {
+        this.state.onChanges.push(callback);
+      }
+    };
+    this._controllable = new Controllable(this);
+    this._disableable = new Disableable(this);
+    this._submittable = new Submittable(this, {
+      name: this.getAttribute("name"),
+      value: this.state.getValue()
+    });
+    this.state.onChange((value3) => {
+      this._submittable.update(value3);
+    });
+    this._controllable.initial((initial) => initial && this.state.setValue(initial));
+    this._controllable.getter(() => this.state.getValue());
+    this._controllable.setter((v) => this.state.setValue(v));
+    let undoDisableActions = () => {
+    };
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        undoDisableActions = this._disableActions();
+        setAttribute2(this._inputEl, "disabled", "");
+      } else {
+        undoDisableActions();
+        undoDisableActions = () => {
+        };
+        removeAttribute(this._inputEl, "disabled");
+      }
+    });
+    on(this._inputEl, "input", (e) => {
+      this._controllable.dispatch();
+      e.stopPropagation();
+    });
+  }
+  _resizeTextarea() {
+    setAttribute2(this._inputEl, "style", "height: auto");
+    let style = window.getComputedStyle(this._inputEl);
+    let height = this._inputEl.scrollHeight;
+    let lineHeight = parseFloat(style.lineHeight);
+    if (isNaN(lineHeight)) {
+      lineHeight = parseFloat(style.fontSize) * 1.2;
+    }
+    let borderTop = parseFloat(style.borderTopWidth);
+    let borderBottom = parseFloat(style.borderBottomWidth);
+    let paddingTop = parseFloat(style.paddingTop);
+    let paddingBottom = parseFloat(style.paddingBottom);
+    let minHeight = this.config.rows * lineHeight;
+    let maxHeight = this.config.maxRows * lineHeight;
+    if (style.boxSizing === "border-box") {
+      height += borderTop + borderBottom;
+      minHeight += paddingTop + paddingBottom + borderTop + borderBottom;
+      maxHeight += paddingTop + paddingBottom + borderTop + borderBottom;
+    } else {
+      height -= paddingTop + paddingBottom;
+    }
+    if (height < minHeight) height = minHeight;
+    let overflow = "hidden";
+    if (height > maxHeight) {
+      height = maxHeight;
+      overflow = "auto";
+    }
+    setAttribute2(this._inputEl, "style", `height: ${height}px; overflow-y: ${overflow}`);
+  }
+  focusInput() {
+    this._inputEl.focus();
+  }
+  _resizeEditor() {
+    let contentEl = this._inputEl.querySelector('[data-slot="content"]');
+    if (!contentEl) return;
+    let style = window.getComputedStyle(contentEl);
+    let lineHeight = parseFloat(style.lineHeight);
+    if (isNaN(lineHeight)) {
+      lineHeight = parseFloat(style.fontSize) * 1.2;
+    }
+    let borderTop = parseFloat(style.borderTopWidth);
+    let borderBottom = parseFloat(style.borderBottomWidth);
+    let paddingTop = parseFloat(style.paddingTop);
+    let paddingBottom = parseFloat(style.paddingBottom);
+    let minHeight = this.config.rows * lineHeight;
+    let maxHeight = this.config.maxRows * lineHeight;
+    if (style.boxSizing === "border-box") {
+      minHeight += paddingTop + paddingBottom + borderTop + borderBottom;
+      maxHeight += paddingTop + paddingBottom + borderTop + borderBottom;
+    }
+    setAttribute2(contentEl, "style", `min-height: ${minHeight}px; max-height: ${maxHeight}px; height: auto; overflow-y: auto;`);
+  }
+  _initTextarea() {
+    if (!this._inputEl.hasAttribute("rows")) {
+      setAttribute2(this._inputEl, "rows", this.config.rows);
+    }
+    if (this.hasAttribute("placeholder")) {
+      setAttribute2(this._inputEl, "placeholder", this.getAttribute("placeholder"));
+    }
+    this._inputEl.addEventListener("input", () => this._resizeTextarea());
+    this._resizeTextarea();
+    on(this._inputEl, "keydown", (e) => this._handleSubmitKeydown(e));
+  }
+  _initEditor() {
+    if (this.hasAttribute("placeholder")) {
+      setAttribute2(this._inputEl, "placeholder", this.getAttribute("placeholder"));
+    }
+    this.addEventListener("flux:editor:ready", () => {
+      this._resizeEditor();
+    });
+    on(this._inputEl, "keydown", (e) => this._handleSubmitKeydown(e), { capture: true });
+  }
+  _handleSubmitKeydown(e) {
+    if (["cmd-enter", "super-enter", "ctrl-enter"].includes(this.config.submit) && (e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      this._submittable.submitEnclosingForm();
+    } else if (this.config.submit === "enter" && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      this._submittable.submitEnclosingForm();
+    } else if (this.config.submit === "shift-enter" && e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      this._submittable.submitEnclosingForm();
+    }
+  }
+  _disableActions() {
+    let undos = [];
+    let actionEls = this.querySelectorAll("button");
+    actionEls.forEach((el) => {
+      if (!el.hasAttribute("disabled")) {
+        setAttribute2(el, "disabled", "");
+        undos.push(() => {
+          removeAndReleaseAttribute(el, "disabled");
+        });
+      }
+    });
+    return () => {
+      undos.forEach((undo) => undo());
+      undos = [];
+    };
+  }
+};
+inject(({ css }) => css`ui-composer { display: block; }`);
+element("composer", UIComposer);
 
 // js/context.js
 var UIContext = class extends UIElement {
@@ -9091,231 +9811,6 @@ var Focusable = class extends Mixin {
   }
 };
 
-// js/options.js
-var UIOptions = class extends UIElement {
-  boot() {
-    setAttribute2(this, "tabindex", "-1");
-    if (this.hasAttribute("popover")) {
-      this.addEventListener("lofi-close-popovers", () => {
-        this.hidePopover();
-      });
-    }
-    setAttribute2(this, "role", "listbox");
-  }
-};
-var UIOption = class extends UIElement {
-  mount() {
-    let target = this;
-    this._disableable = new Disableable(target, {
-      disableWithParent: false
-    });
-    this._disableable.onInitAndChange((disabled) => {
-      if (disabled) {
-        setAttribute2(target, "aria-disabled", "true");
-      } else {
-        removeAttribute(target, "aria-disabled");
-      }
-    });
-    let id = assignId(target, "option");
-    setAttribute2(target, "role", "option");
-    this._filterable = new Filterable(target, {
-      mirror: this,
-      keep: !!this.closest("ui-empty") || this.getAttribute("filter") === "manual"
-    });
-    this._activatable = new Activatable(target);
-    if (!this.hasAttribute("action")) {
-      this._selectable = new Selectable2(target, {
-        value: this.getValue(),
-        label: this.getLabel(),
-        selectedInitially: this.hasAttribute("selected")
-      });
-    }
-    let observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === "selected") {
-          if (this.hasAttribute("selected")) this._selectable.setState(true);
-          else this._selectable.setState(false);
-        }
-      });
-    });
-    observer.observe(this, { attributeFilter: ["selected"] });
-  }
-  get selected() {
-    if (!this?._selectable) return false;
-    return this._selectable.isSelected();
-  }
-  set selected(value3) {
-    if (!this?._selectable) return false;
-    this._selectable.setState(value3);
-  }
-  getLabel() {
-    return this.hasAttribute("label") ? this.getAttribute("label") : this.textContent.trim();
-  }
-  getValue() {
-    return this.hasAttribute("value") ? this.getAttribute("value") : this.textContent.trim();
-  }
-};
-inject(({ css }) => css`ui-options:not([popover]), ui-option { display: block; cursor: default; }`);
-element("options", UIOptions);
-element("option", UIOption);
-
-// js/pillbox.js
-var UIPillbox = class extends UISelect {
-  mount() {
-    this._disableable = new Disableable(this);
-    let input = this.input();
-    let list = this.list();
-    let multiple = this.hasAttribute("multiple");
-    let triggerEl = this.querySelector("ui-pillbox-trigger");
-    let listbox = this.querySelector("ui-options") || this;
-    let listId = initListbox(listbox, "options", multiple);
-    this._activatable = new ActivatableGroup(listbox, { filter: "data-hidden" });
-    if (this.hasAttribute("filter") && this.getAttribute("filter") !== "manual") {
-      this._filterable = new FilterableGroup(list);
-      this._filterable.onChange(() => {
-        this._activatable.clearActive();
-        if (this._filterable.hasResults()) {
-          this._activatable.activateFirst();
-        }
-      });
-      this.addEventListener("close", () => {
-        if (this._filterable) {
-          this._filterable.filter("");
-        }
-      });
-    }
-    let popoverEl = this.querySelector("[popover]:not(ui-tooltip > [popover])");
-    let popoverInputEl = popoverEl?.querySelector('input:not([type="hidden"])');
-    if (!popoverEl) throw new Error("Popover element not found");
-    if (popoverInputEl) {
-      let trigger = triggerEl;
-      let input2 = popoverInputEl;
-      let popover = popoverEl;
-      setAttribute2(trigger, "role", "button");
-      setAttribute2(input2, "aria-autocomplete", "list");
-      setAttribute2(input2, "aria-controls", listId);
-      setAttribute2(input2, "role", "combobox");
-      this._disableable.onInitAndChange((disabled) => {
-        if (disabled) {
-          trigger && setAttribute2(trigger, "disabled", "");
-          input2 && setAttribute2(input2, "disabled", "");
-        } else {
-          trigger && removeAttribute(trigger, "disabled");
-          input2 && removeAttribute(input2, "disabled");
-        }
-      });
-      this._popoverable = new Popoverable(popover);
-      this._anchorable = new Anchorable(popover, {
-        reference: trigger,
-        matchWidth: true,
-        position: this.hasAttribute("position") ? this.getAttribute("position") : void 0,
-        gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
-        offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0,
-        scrollY: false
-      });
-      trackActiveDescendant(input2, this._activatable, this._selectable);
-      preventInputEventsFromBubblingToSelectRoot(input2);
-      highlightInputContentsWhenFocused(input2);
-      this._filterable && filterResultsByInput(input2, this._filterable);
-      focusInputWhenPopoverOpens(input2, this._popoverable);
-      initPopover(this, trigger, popover, this._popoverable, this._anchorable);
-      preventScrollWhenPopoverIsOpen(this, this._popoverable, [input2]);
-      linkExpandedStateToPopover(trigger, this._popoverable);
-      handleInputClearing(this, input2, this._selectable, this._popoverable);
-      controlPopoverWithKeyboard(trigger, this._popoverable, this._activatable, this._selectable);
-      togglePopoverWithMouse(trigger, this._popoverable);
-      controlPopoverWithEscapeKey(this, this._popoverable);
-      handleKeyboardNavigation(input2, this._activatable);
-      handleKeyboardSearchNavigation(trigger, this._activatable, this._popoverable);
-      handleKeyboardSelection(this, input2, this._activatable);
-      handleMouseSelection(this, this._activatable);
-      controlActivationWithPopover(this._popoverable, this._activatable, this._selectable);
-      handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
-    } else {
-      let trigger = triggerEl;
-      let popover = popoverEl;
-      setAttribute2(trigger, "role", "combobox");
-      setAttribute2(trigger, "aria-controls", listId);
-      setAttribute2(trigger, "aria-autocomplete", "none");
-      this._disableable.onInitAndChange((disabled) => {
-        if (disabled) {
-          trigger && setAttribute2(trigger, "disabled", "");
-          input && setAttribute2(input, "disabled", "");
-        } else {
-          trigger && removeAttribute(trigger, "disabled");
-          input && removeAttribute(input, "disabled");
-        }
-      });
-      this._popoverable = new Popoverable(popover);
-      this._anchorable = new Anchorable(popover, {
-        reference: trigger,
-        matchWidth: true,
-        position: this.hasAttribute("position") ? this.getAttribute("position") : void 0,
-        gap: this.hasAttribute("gap") ? this.getAttribute("gap") : void 0,
-        offset: this.hasAttribute("offset") ? this.getAttribute("offset") : void 0
-      });
-      initPopover(this, trigger, popover, this._popoverable, this._anchorable);
-      preventScrollWhenPopoverIsOpen(this, this._popoverable);
-      linkExpandedStateToPopover(trigger, this._popoverable);
-      controlPopoverWithKeyboard(trigger, this._popoverable, this._activatable, this._selectable);
-      togglePopoverWithMouse(trigger, this._popoverable);
-      trackActiveDescendant(trigger, this._activatable, this._selectable);
-      controlPopoverWithEscapeKey(this, this._popoverable);
-      handleKeyboardNavigation(trigger, this._activatable);
-      handleKeyboardSearchNavigation(trigger, this._activatable, this._popoverable);
-      handleKeyboardSelection(this, trigger, this._activatable);
-      handleMouseSelection(this, this._activatable);
-      controlActivationWithPopover(this._popoverable, this._activatable, this._selectable);
-      handlePopoverClosing(this, this._selectable, this._popoverable, multiple);
-    }
-    let observer = new MutationObserver(() => {
-      setTimeout(() => {
-        if (!this._popoverable || this._popoverable.getState()) {
-          let firstSelectedOption = this._selectable.selecteds().find((selected) => !selected.el._disableable.isDisabled())?.el;
-          setTimeout(() => {
-            this._activatable.activateSelectedOrFirst(firstSelectedOption);
-          });
-        } else {
-          this._activatable.clearActive();
-        }
-      });
-    });
-    observer.observe(list, { childList: true });
-  }
-  list() {
-    return this.querySelector("ui-options") || this;
-  }
-};
-var UIPillboxTrigger = class extends UIElement {
-  boot() {
-    setAttribute2(this, "tabindex", "0");
-    this._disableable = new Disableable(this);
-    let disableClick = (e) => {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    };
-    this._disableable.onInitAndChange((disabled) => {
-      if (disabled) {
-        this.addEventListener("click", disableClick, true);
-      } else {
-        this.removeEventListener("click", disableClick, true);
-      }
-    });
-  }
-  mount() {
-    on(this, "keydown", (e) => {
-      if (e.key === " ") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        this.click();
-      }
-    });
-  }
-};
-element("pillbox-trigger", UIPillboxTrigger);
-element("pillbox", UIPillbox);
-inject(({ css }) => css`ui-pillbox { display: block; }`);
-
 // js/menu.js
 var UIMenu = class _UIMenu extends UIElement {
   boot() {
@@ -9360,7 +9855,7 @@ var UIMenu = class _UIMenu extends UIElement {
     observer.observe(this, { childList: true, subtree: true });
   }
   onPopoverShow() {
-    queueMicrotask(() => {
+    requestAnimationFrame(() => {
       if (this.fromArrowDown) {
         this._focusable.focusFirst();
         this.fromArrowDown = false;
@@ -9403,7 +9898,7 @@ var UIMenuCheckbox = class extends UIElement {
     setAttribute2(button, "role", "menuitemcheckbox");
     if (this._disabled) return;
     button._focusable = new Focusable(button, { disableable: this._disableable, hover: true, tabbableAttr: "data-active" });
-    button._selectable = new Selectable2(button, {
+    button._selectable = new Selectable(button, {
       toggleable: true,
       value: this.hasAttribute("value") ? this.getAttribute("value") : button.textContent.trim(),
       label: this.hasAttribute("label") ? this.getAttribute("label") : button.textContent.trim(),
@@ -9443,7 +9938,7 @@ var UIMenuRadio = class extends UIElement {
     setAttribute2(button, "role", "menuitemradio");
     if (this._disabled) return;
     button._focusable = new Focusable(button, { disableable: this._disableable, hover: true, tabbableAttr: "data-active" });
-    button._selectable = new Selectable2(button, {
+    button._selectable = new Selectable(button, {
       toggleable: false,
       value: this.hasAttribute("value") ? this.getAttribute("value") : button.textContent.trim(),
       label: this.hasAttribute("label") ? this.getAttribute("label") : button.textContent.trim(),
@@ -9713,6 +10208,12 @@ var UITooltip = class extends UIElement {
         removeInterest = result.remove;
       }
     });
+    let observer = new MutationObserver(() => {
+      if (this.getAttribute("draggable") === "true") {
+        overlay._popoverable.setState(false);
+      }
+    });
+    observer.observe(this, { attributeFilter: ["draggable"] });
     let id = assignId(overlay, "tooltip");
     let interactive = this.hasAttribute("interactive");
     let wantsLabel = this.hasAttribute("label") || button.textContent.trim() === "";
@@ -9782,11 +10283,15 @@ var UISidebar = class extends UIElement {
     }
     this.removeAttribute("data-flux-sidebar-cloak");
     this.observable.subscribe(EVENTS.VIEWPORT_ENTER_DESKTOP, () => {
+      let reapplyTransition = setStyle(this, "transition", "none");
+      setTimeout(reapplyTransition);
       this.state.viewportDesktop = true;
       this.state.viewportMobile = false;
       this.observable.notify(EVENTS.STATE_CHANGED);
     });
     this.observable.subscribe(EVENTS.VIEWPORT_ENTER_MOBILE, () => {
+      let reapplyTransition = setStyle(this, "transition", "none");
+      setTimeout(reapplyTransition);
       this.state.viewportDesktop = false;
       this.state.viewportMobile = true;
       this.observable.notify(EVENTS.STATE_CHANGED);
@@ -9845,6 +10350,12 @@ var UISidebar = class extends UIElement {
   }
   setStickyPositionStyles() {
     let offsetTop = this.offsetTop;
+    let pageScrollYValue = window.pageYOffset;
+    if (pageScrollYValue > 0) {
+      window.scrollTo(window.scrollX, 0);
+      offsetTop = this.offsetTop;
+      window.scrollTo(window.scrollX, pageScrollYValue);
+    }
     this.style.position = "sticky";
     this.style.top = offsetTop + "px";
     this.style.maxHeight = `calc(100dvh - ${offsetTop}px)`;
@@ -9910,12 +10421,421 @@ var UISidebarToggle = class extends UIElement {
 element("sidebar", UISidebar);
 element("sidebar-toggle", UISidebarToggle);
 
+// js/slider.js
+var UISlider = class extends UIElement {
+  boot() {
+    this.thumbs = this.querySelectorAll("[data-flux-slider-thumb]");
+    this.indicator = this.querySelector("[data-flux-slider-indicator]");
+    this.inputEls = this.querySelectorAll('input[type="range"]');
+    this.config = {
+      range: this.range(),
+      min: this.min(),
+      max: this.max(),
+      step: this.step(),
+      bigStep: this.bigStep(),
+      minStepsBetween: this.minStepsBetween(),
+      rangeStartString: this.rangeStartString(),
+      rangeEndString: this.rangeEndString()
+    };
+    this.state = {
+      onChanges: [],
+      getValue: () => {
+        return this.config.range ? [parseFloat(this.inputEls[0].value), parseFloat(this.inputEls[1].value)] : parseFloat(this.inputEls[0].value);
+      },
+      getValueAsArray: () => {
+        return this.config.range ? this.state.getValue() : [this.state.getValue()];
+      },
+      setValue: (value3) => {
+        if (this.config.range) {
+          this.inputEls[0].value = value3[0];
+          this.inputEls[1].value = value3[1];
+        } else {
+          this.inputEls[0].value = value3;
+        }
+        this.state.onChanges.forEach((i) => i(this.state.getValue()));
+      },
+      setValueInRange: (index, value3) => {
+        let newValues = [...this.state.getValue()];
+        newValues[index] = value3;
+        this.state.setValue(newValues);
+      },
+      setValueFromString: (value3) => {
+        if (this.config.range) {
+          this.state.setValue(value3.split(","));
+        } else {
+          this.state.setValue(value3);
+        }
+      },
+      increment: (index, increment) => {
+        let values = this.state.getValueAsArray();
+        if (this.config.range) {
+          values[index] = this.constrainRangeValue(index, values[index] + increment);
+          this.state.setValueInRange(index, values[index]);
+        } else {
+          this.state.setValue(clamp2(values[index] + increment, this.config.min, this.config.max));
+        }
+      },
+      onChange: (callback) => {
+        this.state.onChanges.push(callback);
+      }
+    };
+    this._controllable = new Controllable(this);
+    this._disableable = new Disableable(this);
+    this._submittable = new Submittable(this, {
+      name: this.getAttribute("name"),
+      value: this.state.getValue()
+    });
+    this.state.onChange((value3) => {
+      this.repositionThumbsAndIndicator();
+      this.updateTicks();
+      this._submittable.update(value3);
+      if (this.config.range) {
+        this.inputEls[0].ariaValueText = `${value3[0]} ${this.config.rangeStartString}`;
+        this.inputEls[1].ariaValueText = `${value3[1]} ${this.config.rangeEndString}`;
+      }
+    });
+    this._controllable.initial((initial) => initial && this.state.setValue(initial));
+    this._controllable.getter(() => this.state.getValue());
+    this._controllable.setter((v) => this.state.setValue(v));
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        this.inputEls.forEach((el) => el.setAttribute("disabled", ""));
+      } else {
+        this.inputEls.forEach((el) => el.removeAttribute("disabled"));
+      }
+    });
+    this.setNativeInputAttributes();
+    this.setInitialValue();
+    this.setupExtraInputIfExists();
+    this.repositionTicks();
+    this.registerNativeInputListeners();
+    this.registerPointerListeners();
+    this.registerMutationObserver();
+    new ResizeObserver(() => {
+      this.repositionThumbsAndIndicator();
+      this.repositionTicks();
+    }).observe(this);
+  }
+  mount() {
+    this.setupFieldIfExists();
+  }
+  setNativeInputAttributes() {
+    for (let i = 0; i < this.inputEls.length; i++) {
+      this.inputEls[i].setAttribute("min", this.config.min);
+      this.inputEls[i].setAttribute("max", this.config.max);
+      this.inputEls[i].setAttribute("step", this.config.step);
+    }
+  }
+  setInitialValue() {
+    if (this.hasAttribute("value")) {
+      this.state.setValueFromString(this.getAttribute("value"));
+    } else {
+      this.state.setValue(this.state.getValue());
+    }
+  }
+  setupExtraInputIfExists() {
+    let extraInput = this.closest("ui-field")?.querySelector("[data-flux-input] > input");
+    if (!extraInput) return;
+    this.extraInput = extraInput;
+    this._disableable.onInitAndChange((disabled) => {
+      if (disabled) {
+        setAttribute2(extraInput, "disabled", "");
+      } else {
+        removeAttribute(extraInput, "disabled");
+      }
+    });
+  }
+  setupFieldIfExists() {
+    let field = this.closest("ui-field");
+    if (!field) return;
+    queueMicrotask(() => {
+      if (field.label) on(field.label, "click", () => this.inputEls[0].focus());
+      if (field.label && this.extraInput) setAttribute2(this.extraInput, "aria-labelledby", field.label.id);
+      if (field.description && this.extraInput) setAttribute2(this.extraInput, "aria-describedby", field.description.id);
+      for (let i = 0; i < this.inputEls.length; i++) {
+        if (field.label) setAttribute2(this.inputEls[i], "aria-labelledby", field.label.id);
+        if (field.description) setAttribute2(this.inputEls[i], "aria-describedby", field.description.id);
+      }
+    });
+  }
+  registerNativeInputListeners() {
+    for (let i = 0; i < this.inputEls.length; i++) {
+      on(this.inputEls[i], "input", (e) => {
+        e.stopPropagation();
+      });
+      on(this.inputEls[i], "change", (e) => {
+        let value3 = parseFloat(e.target.value);
+        if (this.config.range) {
+          value3 = this.constrainRangeValue(i, value3);
+          this.state.setValueInRange(i, value3);
+        } else {
+          this.state.setValue(value3);
+        }
+        this._controllable.dispatch();
+        e.stopPropagation();
+      });
+      on(this.inputEls[i], "keydown", (e) => {
+        if (!e.shiftKey) return;
+        switch (e.key) {
+          case "ArrowUp":
+            this.state.increment(i, this.config.bigStep);
+            break;
+          case "ArrowDown":
+            this.state.increment(i, this.config.bigStep * -1);
+            break;
+          case "ArrowRight":
+            this.state.increment(i, this.config.bigStep * (isRTL() ? -1 : 1));
+            break;
+          case "ArrowLeft":
+            this.state.increment(i, this.config.bigStep * (isRTL() ? 1 : -1));
+            break;
+          default:
+            return;
+        }
+        this._controllable.dispatch();
+        e.preventDefault();
+      });
+      on(this.inputEls[i], "focus", () => this.raiseThumb(i));
+      on(this.inputEls[i], "blur", () => this.lowerThumb(i));
+    }
+  }
+  registerPointerListeners() {
+    on(this, "pointerdown", (e) => {
+      if (this._disableable.isDisabled()) return;
+      if (e.button !== 0) return;
+      let index = this.getThumbIndexFromX(e.clientX);
+      let thumbRect = this.thumbs[index].getBoundingClientRect();
+      let thumbMidpoint = thumbRect.left + thumbRect.width / 2;
+      let pointerOffset = 0;
+      if (Math.abs(e.clientX - thumbMidpoint) < thumbRect.width / 2) {
+        pointerOffset = e.clientX - thumbMidpoint;
+      }
+      let initialValues = this.state.getValueAsArray();
+      let lastValues = this.state.getValueAsArray();
+      let setValue = (e2) => {
+        let value3 = this.getValueFromX(e2.clientX - pointerOffset);
+        if (this.config.range) {
+          value3 = this.constrainRangeValue(index, value3);
+        }
+        let newValues = [...lastValues];
+        newValues[index] = value3;
+        if (lastValues.toString() !== newValues.toString()) {
+          lastValues = newValues;
+          this.config.range ? this.state.setValueInRange(index, value3) : this.state.setValue(value3);
+          this.dispatchEvent(new Event("input", {
+            bubbles: false,
+            cancelable: true
+          }));
+        }
+      };
+      setValue(e);
+      this.setPointerCapture(e.pointerId);
+      requestAnimationFrame(() => {
+        this.inputEls[index].focus();
+      });
+      document.addEventListener("pointermove", setValue);
+      document.addEventListener("pointerup", (e2) => {
+        document.removeEventListener("pointermove", setValue);
+        this.releasePointerCapture(e2.pointerId);
+        requestAnimationFrame(() => {
+          this.lowerThumb(index);
+        });
+        if (initialValues.toString() !== lastValues.toString()) {
+          this.dispatchEvent(new Event("change", {
+            bubbles: false,
+            cancelable: true
+          }));
+        }
+      }, { once: true });
+    });
+  }
+  registerMutationObserver() {
+    let observer = new MutationObserver(() => {
+      this.config.min = this.min();
+      this.config.max = this.max();
+      this.config.step = this.step();
+      this.config.bigStep = this.bigStep();
+      this.config.minStepsBetween = this.minStepsBetween();
+      this.setNativeInputAttributes();
+      this.repositionThumbsAndIndicator();
+      this.repositionTicks();
+    });
+    observer.observe(this, {
+      attributes: true,
+      attributeFilter: ["min", "max", "step", "big-step", "min-steps-between"]
+    });
+  }
+  repositionThumbsAndIndicator() {
+    if (this.config.range) {
+      let value3 = this.state.getValue();
+      let startPercentage = this.getPercentageFromValue(value3[0]);
+      let endPercentage = this.getPercentageFromValue(value3[1]);
+      this.thumbs[0].style.insetInlineStart = startPercentage + "%";
+      this.thumbs[1].style.insetInlineStart = endPercentage + "%";
+      this.indicator.style.insetInlineStart = startPercentage + "%";
+      this.indicator.style.insetInlineEnd = 100 - endPercentage + "%";
+    } else {
+      let value3 = this.state.getValue();
+      let percentage = this.getPercentageFromValue(value3);
+      this.thumbs[0].style.insetInlineStart = percentage + "%";
+      this.indicator.style.insetInlineStart = 0;
+      this.indicator.style.insetInlineEnd = 100 - percentage + "%";
+    }
+  }
+  repositionTicks() {
+    this.querySelectorAll("[data-flux-slider-tick]").forEach((tick) => {
+      let tickValue = parseFloat(tick.getAttribute("data-value"));
+      if (isNaN(tickValue)) return;
+      let percentage = this.getPercentageFromValue(tickValue);
+      setAttribute2(tick, "style", `inset-inline-start: ${percentage}%`);
+    });
+  }
+  updateTicks() {
+    let values = this.state.getValueAsArray();
+    let activeRange = this.config.range ? values : [this.state.min, values[0]];
+    this.querySelectorAll("[data-flux-slider-tick]").forEach((tick) => {
+      let tickValue = parseFloat(tick.getAttribute("data-value"));
+      if (isNaN(tickValue)) return;
+      for (let i = 0; i < values.length; i++) {
+        if (values[i] == tickValue) {
+          setAttribute2(tick, "data-current", "");
+        } else {
+          removeAttribute(tick, "data-current");
+        }
+      }
+      if (tickValue >= activeRange[0] || tickValue <= activeRange[1]) {
+        setAttribute2(tick, "data-active", "");
+      } else {
+        removeAttribute(tick, "data-active");
+      }
+    });
+  }
+  raiseThumb(index) {
+    this.thumbs[index].style.zIndex = 10;
+  }
+  lowerThumb(index) {
+    this.thumbs[index].style.zIndex = null;
+  }
+  getThumbIndexFromX(x) {
+    let closestIndex;
+    let closestDistance;
+    for (let i = 0; i < this.thumbs.length; i++) {
+      let rect = this.thumbs[i].getBoundingClientRect();
+      let midpoint = (rect.left + rect.right) / 2;
+      let distance = Math.abs(midpoint - x);
+      if (closestDistance && Math.abs(closestDistance - distance) < rect.width / 2) {
+        let trackRect = this.getBoundingClientRect();
+        let distanceFromMax = trackRect.right - rect.right;
+        if (distanceFromMax < rect.width / 4) {
+          continue;
+        }
+      }
+      if (closestDistance === void 0 || distance <= closestDistance) {
+        closestDistance = distance;
+        closestIndex = i;
+      }
+    }
+    return closestIndex;
+  }
+  getPercentageFromValue(value3) {
+    let current = value3 - this.config.min;
+    let total = this.config.max - this.config.min;
+    if (total == 0) return 0;
+    let fraction = clamp2(current / total, 0, 100);
+    let trackRect = this.getBoundingClientRect();
+    let thumbRect = this.thumbs[0].getBoundingClientRect();
+    let trackPadding = thumbRect.width / 2;
+    let width = trackRect.width - trackPadding * 2;
+    let offset3 = width * fraction + trackPadding;
+    let adjustedPercentage = offset3 / trackRect.width * 100;
+    return adjustedPercentage;
+  }
+  getValueFromX(x) {
+    let min2 = this.config.min;
+    let max2 = this.config.max;
+    let step = this.config.step;
+    let trackRect = this.getBoundingClientRect();
+    let thumbRect = this.thumbs[0].getBoundingClientRect();
+    let trackPadding = thumbRect.width / 2;
+    let trackWidth = trackRect.width - trackPadding * 2;
+    let trackLeft = trackRect.left + trackPadding;
+    let relativeX = x - trackLeft;
+    let rescaled = clamp2(relativeX / trackWidth, 0, 1);
+    rescaled = isRTL() ? 1 - rescaled : rescaled;
+    let value3 = (max2 - min2) * rescaled + min2;
+    value3 = roundValueToStep(value3, step, min2);
+    value3 = clamp2(value3, min2, max2);
+    return value3;
+  }
+  constrainRangeValue(index, value3) {
+    let newValues = [...this.state.getValue()];
+    newValues[index] = value3;
+    let stepsBetween = (newValues[1] - newValues[0]) / this.config.step;
+    if (stepsBetween < this.config.minStepsBetween) {
+      let limits = [
+        newValues[1] - this.config.minStepsBetween * this.config.step,
+        newValues[0] + this.config.minStepsBetween * this.config.step
+      ];
+      return limits[index];
+    }
+    return value3;
+  }
+  range() {
+    return this.hasAttribute("range");
+  }
+  min() {
+    return this.hasAttribute("min") ? parseFloat(this.getAttribute("min")) : 0;
+  }
+  max() {
+    return this.hasAttribute("max") ? parseFloat(this.getAttribute("max")) : 100;
+  }
+  step() {
+    if (!this.hasAttribute("step")) {
+      return 1;
+    }
+    let step = parseFloat(this.getAttribute("step"));
+    return step <= 0 || isNaN(step) ? 1 : step;
+  }
+  bigStep() {
+    if (!this.hasAttribute("big-step")) {
+      return this.step();
+    }
+    let bigStep = parseFloat(this.getAttribute("big-step"));
+    return bigStep <= 0 || isNaN(bigStep) ? this.step() : bigStep;
+  }
+  minStepsBetween() {
+    return this.hasAttribute("min-steps-between") ? parseFloat(this.getAttribute("min-steps-between")) : 0;
+  }
+  rangeStartString() {
+    return this.getAttribute("data-flux-aria-range-start") || "start range";
+  }
+  rangeEndString() {
+    return this.getAttribute("data-flux-aria-range-end") || "end range";
+  }
+};
+function clamp2(value3, min2, max2) {
+  return Math.min(Math.max(value3, min2), max2);
+}
+function roundValueToStep(value3, step, min2) {
+  let precision;
+  if (Math.abs(step) >= 1) {
+    precision = step.toString().split(".")[1]?.length || 0;
+  } else {
+    let parts = step.toExponential().split("e-");
+    let matissaDecimalPart = parts[0].split(".")[1];
+    precision = (matissaDecimalPart ? matissaDecimalPart.length : 0) + parseInt(parts[1], 10);
+  }
+  let nearest = Math.round((value3 - min2) / step) * step + min2;
+  return Number(nearest.toFixed(precision));
+}
+element("slider", UISlider);
+
 // js/switch.js
 var UISwitch = class extends UIControl {
   boot() {
     let button = this;
     this._disableable = new Disableable(this);
-    this._selectable = new Selectable2(button, {
+    this._selectable = new Selectable(button, {
       toggleable: true,
       dataAttr: "data-checked",
       ariaAttr: "aria-checked",
@@ -10046,10 +10966,12 @@ var UIField = class _UIField extends UIElement {
       control.focus();
     } else if (control.localName === "input" && ["file"].includes(control.type)) {
       control.click();
-    } else if (["ui-select", "ui-date-picker", "ui-time-picker"].includes(control.localName)) {
+    } else if (["ui-select", "ui-date-picker", "ui-time-picker", "ui-otp"].includes(control.localName)) {
       control.trigger()?.focus();
     } else if (["ui-editor"].includes(control.localName)) {
       control.focus();
+    } else if (["ui-composer"].includes(control.localName)) {
+      control.focusInput();
     } else {
       control.focus();
     }
@@ -10081,6 +11003,19 @@ element("field", UIField);
 element("label", UILabel);
 element("description", UIDescription);
 
+// js/legend.js
+var UILegend = class extends UIElement {
+  mount() {
+    let id = assignId(this, "legend");
+    let fieldset = this.closest("fieldset");
+    if (fieldset) {
+      setAttribute2(fieldset, "aria-labelledby", id);
+    }
+  }
+};
+inject(({ css }) => css`ui-legend { display: block; }`);
+element("legend", UILegend);
+
 // js/chart/chart.js
 function generateChartObject(config) {
   let scaleFns = {
@@ -10104,6 +11039,7 @@ function generateChartObject(config) {
     return memoizedValues[memoKey];
   };
   let chart = {
+    locale: config.locale,
     data: [],
     width: config.width,
     height: config.height,
@@ -10149,7 +11085,7 @@ function generateChartObject(config) {
         get ticks() {
           return memoize("x.ticks", dataMemoKey, () => {
             let xTickValues = generateTickValues(chart.data, this, generateDomain(this.type, this.values));
-            let xTickLabels = generateTickLabels(xTickValues, this.type, this.format, this.tickSuffix, this.tickPrefix, this.interval);
+            let xTickLabels = generateTickLabels(xTickValues, this.type, this.format, this.tickSuffix, this.tickPrefix, this.interval, chart.locale);
             return xTickValues.map((value3, index) => ({ value: value3, label: xTickLabels[index] }));
           });
         },
@@ -10198,7 +11134,7 @@ function generateChartObject(config) {
         get ticks() {
           return memoize("y.ticks", dataMemoKey, () => {
             let yTickValues = generateTickValues(chart.data, this, generateDomain(this.type, this.values));
-            let yTickLabels = generateTickLabels(yTickValues, this.type, this.format, this.tickSuffix, this.tickPrefix, this.interval);
+            let yTickLabels = generateTickLabels(yTickValues, this.type, this.format, this.tickSuffix, this.tickPrefix, this.interval, chart.locale);
             return yTickValues.map((value3, index) => ({ value: value3, label: yTickLabels[index] }));
           });
         },
@@ -10405,17 +11341,17 @@ function generateTickValues(data, axis, domain) {
   }
   return tickValues;
 }
-function generateTickLabels(tickValues, type, format, tickSuffix, tickPrefix, interval) {
+function generateTickLabels(tickValues, type, format, tickSuffix, tickPrefix, interval, locale) {
   let labels = [];
   if (type === "time") {
     if (!format) {
       [format] = generateDateFormatAndTicks(tickValues[0], tickValues[tickValues.length - 1], null, interval);
     }
     format = { ...format, timeZone: "UTC" };
-    labels = tickValues.map((value3) => new Date(value3).toLocaleString(getLocale(), format));
+    labels = tickValues.map((value3) => new Date(value3).toLocaleString(locale, format));
   } else if (type === "linear") {
-    if (format) labels = tickValues.map((value3) => value3.toLocaleString(getLocale(), format));
-    else labels = tickValues.map((value3) => value3.toLocaleString(getLocale()));
+    if (format) labels = tickValues.map((value3) => value3.toLocaleString(locale, format));
+    else labels = tickValues.map((value3) => value3.toLocaleString(locale));
   } else {
     labels = tickValues.map((value3) => value3 + "");
   }
@@ -10686,6 +11622,7 @@ var UIChart = class extends HTMLElement {
   }
   init(svgTemplate, svg) {
     this._data = this.hasAttribute("value") ? JSON.parse(this.getAttribute("value")) : [];
+    let locale = this.hasAttribute("locale") ? this.getAttribute("locale") : getLocale();
     this._observable = new Observable();
     this._selectable = { getState: () => this._data, setState: (value3) => {
       this._data = value3;
@@ -10801,6 +11738,7 @@ var UIChart = class extends HTMLElement {
     }
     let [xKey, yKeys] = discoverXandYKeys(svg);
     let chart = generateChartObject({
+      locale,
       data: this._data,
       width: svg.parentElement.getBoundingClientRect().width,
       height: svg.parentElement.getBoundingClientRect().height,
@@ -11111,9 +12049,9 @@ var UIChart = class extends HTMLElement {
                     if (format === null) return slot.textContent = value3;
                     format = { ...format, timeZone: "UTC" };
                     if (isNumeric(value3)) {
-                      value3 = Number(value3).toLocaleString(getLocale(), format);
+                      value3 = Number(value3).toLocaleString(chart.locale, format);
                     } else if (isDateish2(value3)) {
-                      value3 = new Date(value3).toLocaleDateString(getLocale(), format);
+                      value3 = new Date(value3).toLocaleDateString(chart.locale, format);
                     }
                     slot.textContent = value3;
                   }
@@ -11148,9 +12086,9 @@ var UIChart = class extends HTMLElement {
                 format = { ...format, timeZone: "UTC" };
                 let value3 = slot.hasAttribute("fallback") && event === null ? slot.getAttribute("fallback") : closestXPoint.datum[field];
                 if (isNumeric(value3)) {
-                  value3 = Number(value3).toLocaleString(getLocale(), format);
+                  value3 = Number(value3).toLocaleString(chart.locale, format);
                 } else if (isDateish2(value3)) {
-                  value3 = new Date(value3).toLocaleString(getLocale(), format);
+                  value3 = new Date(value3).toLocaleString(chart.locale, format);
                 }
                 slot.textContent = value3;
               }
@@ -11426,9 +12364,10 @@ var UIToastGroup = class extends UIElement {
     if (!toastContainer) {
       return console.warn("ui-toast-group: no ui-toast element found", this);
     }
-    if (!this.matches(":popover-open")) {
-      this.showPopover();
+    if (this.matches(":popover-open")) {
+      this.hidePopover();
     }
+    this.showPopover();
     let duration = Number(options.duration === void 0 ? 5e3 : options.duration);
     let template = toastContainer.prepareToastTemplate(options);
     let toastEl = template.firstElementChild;
@@ -11718,7 +12657,7 @@ var UIRadio = class extends UIControl {
   boot() {
     let button = this;
     this._disableable = new Disableable(this);
-    this._selectable = new Selectable2(button, {
+    this._selectable = new Selectable(button, {
       value: this.hasAttribute("value") ? this.getAttribute("value") : Math.random().toString(36).substring(2, 10),
       label: this.hasAttribute("label") ? this.getAttribute("label") : null,
       selectedInitially: this.hasAttribute("checked"),
@@ -11796,7 +12735,7 @@ var UITableScrollArea = class extends UIElement {
   boot() {
     on(this, "scroll", (e) => {
       this.updateAttributes();
-    });
+    }, { passive: true });
     new ResizeObserver(() => {
       this.updateAttributes();
     }).observe(this);
@@ -11864,7 +12803,7 @@ var UITabsScrollArea = class extends UIElement {
   boot() {
     on(this, "scroll", (e) => {
       this.updateScrollVariable();
-    });
+    }, { passive: true });
     new ResizeObserver(() => {
       this.updateScrollVariable();
     }).observe(this);
@@ -11946,7 +12885,7 @@ function initializeTab(el) {
   target._focusable = new Focusable(target, { disableable: el._disableable, tabbableAttr: "data-active" });
   if (!link) {
     let panel = el.getAttribute("name");
-    el._selectable = new Selectable2(el, {
+    el._selectable = new Selectable(el, {
       value: panel || Math.random().toString(36).substring(2, 10),
       label: el.hasAttribute("label") ? el.getAttribute("label") : el.textContent.trim(),
       selectedInitially: el.hasAttribute("selected"),
@@ -11960,8 +12899,17 @@ function initializeTab(el) {
         el._focusable.focus(false);
       }
     });
+    let pointerdownTimeout = null;
     if (!el.closest("ui-tab-group")?.hasAttribute("manual")) {
-      on(el, "focus", () => el._selectable.select());
+      on(el, "pointerdown", () => {
+        clearTimeout(pointerdownTimeout);
+        pointerdownTimeout = setTimeout(() => pointerdownTimeout = null);
+      });
+      on(el, "focus", () => {
+        if (!pointerdownTimeout) {
+          el._selectable.select();
+        }
+      });
     }
     queueMicrotask(() => {
       let container = el.closest("ui-tab-group");
@@ -11993,8 +12941,184 @@ element("tab-group", UITabGroup);
 element("tabs-scroll-area", UITabsScrollArea);
 element("tabs", UITabs);
 
+// js/otp.js
+var UIOTP = class extends UIControl {
+  mount() {
+    this.inputEls = this.querySelectorAll("[data-flux-otp-input]");
+    this.length = this.inputEls.length;
+    this.config = {
+      mode: this.getAttribute("mode") || "numeric",
+      autocomplete: this.getAttribute("autocomplete") || "one-time-code",
+      autoSubmit: this.getAttribute("submit") === "auto",
+      inputAriaLabelTemplate: this.getAttribute("data-flux-input-aria-label") || "Character {current} of {total}"
+    };
+    this.state = {
+      length: 0,
+      onChanges: [],
+      getValue: () => {
+        return Array.from(this.inputEls).map((input) => input.value).join("");
+      },
+      setValue: (value3) => {
+        let cleaned = (value3 ?? "").replace(/\s/g, "").replace(this.invalidCharacters(), "").toUpperCase();
+        for (let i = 0; i < this.length; i++) {
+          this.inputEls[i].value = cleaned[i] || "";
+        }
+        this.state.length = cleaned.length;
+        this.state.onChanges.forEach((i) => i(cleaned));
+      },
+      notify: () => {
+        let value3 = this.state.getValue();
+        this.state.length = value3.length;
+        this.state.onChanges.forEach((i) => i(value3));
+      },
+      reapply: () => {
+        let value3 = this.state.getValue();
+        this.state.setValue(value3);
+      },
+      onChange: (callback) => {
+        this.state.onChanges.push(callback);
+      }
+    };
+    if (this.hasAttribute("value")) {
+      this.state.setValue(this.getAttribute("value"));
+    }
+    this._controllable = new Controllable(this);
+    this._controllable.initial((initial) => initial && this.state.setValue(initial));
+    this._controllable.getter(() => this.state.getValue());
+    let detangled = detangle();
+    this._controllable.setter(detangled((value3) => this.state.setValue(value3)));
+    this.state.onChange(detangled(() => this._controllable.dispatch()));
+    this._submittable = new Submittable(this, {
+      name: this.getAttribute("name"),
+      value: this.state.getValue()
+    });
+    this.state.onChange((value3) => {
+      this._submittable.update(value3);
+      if (value3.length === this.length && this.config.autoSubmit) {
+        this.closest("form")?.requestSubmit();
+      }
+      let activeIndex = Array.from(this.inputEls).findIndex((input) => input === document.activeElement);
+      if (activeIndex > this.nextIndex()) {
+        this.focusIndex(this.nextIndex());
+      }
+    });
+    this._disableable = new Disableable(this);
+    this._disableable.onInitAndChange((disabled) => {
+      for (let inputEl of this.inputEls) {
+        if (disabled) {
+          setAttribute2(inputEl, "disabled", disabled);
+        } else {
+          removeAttribute(inputEl, "disabled");
+        }
+      }
+    });
+    this.updateTabIndexes(this.nextIndex());
+    for (let i = 0; i < this.length; i++) {
+      setAttribute2(this.inputEls[i], "autocomplete", i === 0 ? this.config.autocomplete : "off");
+      setAttribute2(this.inputEls[i], "aria-label", this.config.inputAriaLabelTemplate.replace("{current}", i + 1).replace("{total}", this.length));
+      let prevValue;
+      on(this.inputEls[i], "beforeinput", (e) => {
+        prevValue = e.target.value;
+      });
+      on(this.inputEls[i], "input", (e) => {
+        e.stopPropagation();
+        let value3 = e.target.value;
+        if (value3.length > 1) {
+          this.state.setValue(value3);
+          this.focusIndex(this.nextIndex());
+          e.preventDefault();
+          return;
+        }
+        if (value3 == "") {
+          this.state.reapply();
+          if (i < this.nextIndex()) {
+            this.focusIndex(i);
+          } else {
+            this.focusPrev(i);
+          }
+          return;
+        }
+        if (this.invalidCharacters().test(value3)) {
+          e.target.value = prevValue;
+          this.focusIndex(i);
+          return;
+        }
+        if (this.config.mode !== "numeric") {
+          e.target.value = value3.toUpperCase();
+        }
+        this.inputEls[i].blur();
+        this.state.notify();
+        this.focusNext(i);
+      });
+      on(this.inputEls[i], "keydown", (e) => {
+        if (["Backspace", "Delete", "Clear"].includes(e.key)) {
+          if (e.target.value === "") {
+            requestAnimationFrame(() => this.focusPrev(i));
+          }
+        } else if (e.key === "ArrowRight") {
+          isRTL() ? this.focusPrev(i) : this.focusNext(i);
+          e.preventDefault();
+        } else if (e.key === "ArrowLeft") {
+          isRTL() ? this.focusNext(i) : this.focusPrev(i);
+          e.preventDefault();
+        }
+      });
+      on(this.inputEls[i], "pointerdown", (e) => {
+        this.focusIndex(Math.min(i, this.nextIndex()));
+        e.preventDefault();
+      });
+      on(this.inputEls[i], "focus", (e) => {
+        e.target.setSelectionRange(0, 1);
+        this.updateTabIndexes(i);
+      });
+    }
+  }
+  trigger() {
+    return this.inputEls[this.nextIndex()];
+  }
+  focusIndex(index) {
+    let input = this.inputEls[index];
+    if (document.activeElement === input) {
+      input.blur();
+    }
+    input.focus();
+  }
+  focusPrev(i) {
+    this.focusIndex(Math.max(0, i - 1));
+  }
+  focusNext(i) {
+    this.focusIndex(Math.min(i + 1, this.nextIndex()));
+  }
+  nextIndex() {
+    return Math.min(this.state.length, this.length - 1);
+  }
+  updateTabIndexes(active) {
+    for (let i = 0; i < this.length; i++) {
+      if (i === active) {
+        setAttribute2(this.inputEls[i], "tabindex", "0");
+      } else {
+        setAttribute2(this.inputEls[i], "tabindex", "-1");
+      }
+    }
+  }
+  invalidCharacters() {
+    switch (this.config.mode) {
+      case "numeric":
+        return /[^\d]/g;
+      case "alpha":
+        return /[^a-zA-Z]/g;
+      case "alphanumeric":
+        return /[^a-zA-Z0-9]/g;
+      default:
+        throw new Error(`Unknown OTP input mode "${this.config.mode}"`);
+    }
+  }
+};
+element("otp", UIOTP);
+
 // js/store.js
 document.addEventListener("alpine:init", () => {
+  let Alpine = window.Alpine;
   let applyAppearance = window.Flux?.applyAppearance;
   if (!applyAppearance) {
     applyAppearance = () => {
@@ -12062,14 +13186,117 @@ document.addEventListener("alpine:init", () => {
   Alpine.effect(() => {
     applyAppearance(flux.appearance);
   });
-  document.addEventListener("livewire:navigated", () => {
-    applyAppearance(flux.appearance);
+  document.addEventListener("livewire:navigating", (e) => {
+    e.detail.onSwap(() => {
+      applyAppearance(flux.appearance);
+    });
   });
   let media = window.matchMedia("(prefers-color-scheme: dark)");
   media.addEventListener("change", () => {
     flux.systemAppearanceChanged++;
     applyAppearance(flux.appearance);
   });
+  Alpine.data("fluxInputClearable", () => ({
+    clear() {
+      let input = this.$el.closest("[data-flux-input]").querySelector("input");
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: false }));
+      input.dispatchEvent(new Event("change", { bubbles: false }));
+      input.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
+      input.focus();
+    }
+  }));
+  Alpine.data("fluxInputViewable", () => ({
+    open: false,
+    toggle() {
+      this.open = !this.open;
+      let input = this.$el.closest("[data-flux-input]").querySelector("input");
+      input.setAttribute("type", this.open ? "text" : "password");
+    },
+    init() {
+      let input = this.$el.closest("[data-flux-input]")?.querySelector("input");
+      if (!input) return;
+      let observer = new MutationObserver(() => {
+        let type = this.open ? "text" : "password";
+        if (input.getAttribute("type") === type) return;
+        input.setAttribute("type", type);
+      });
+      observer.observe(input, { attributes: true, attributeFilter: ["type"] });
+    }
+  }));
+  Alpine.data("fluxInputCopyable", () => ({
+    copied: false,
+    copy() {
+      this.copied = !this.copied;
+      let input = this.$el.closest("[data-flux-input]").querySelector("input");
+      navigator.clipboard && navigator.clipboard.writeText(input.value);
+      input.dispatchEvent(new CustomEvent("copy", { bubbles: false }));
+      setTimeout(() => this.copied = false, 2e3);
+    }
+  }));
+  Alpine.data("fluxInputFile", (translations) => ({
+    updateLabel(event) {
+      this.$refs.name.textContent = event.target.files[1] ? event.target.files.length + " " + translations.files : event.target.files[0]?.name || translations.noFile;
+    },
+    init() {
+      Object.defineProperty(this.$refs.input, "value", {
+        ...Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value"),
+        set(value3) {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(this, value3);
+          if (!value3) this.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    }
+  }));
+  Alpine.data("fluxModal", (name, scope) => ({
+    handleShow(event) {
+      if (event.detail.name === name) {
+        if (scope && event.detail.scope === scope) {
+          this.$el.showModal();
+        } else if (!event.detail.scope) {
+          this.$el.showModal();
+        }
+      }
+    },
+    handleClose(event) {
+      if (!event.detail.name) {
+        this.$el.close();
+      } else if (event.detail.name === name) {
+        if (scope && event.detail.scope === scope) {
+          this.$el.close();
+        } else if (!event.detail.scope) {
+          this.$el.close();
+        }
+      }
+    }
+  }));
+  Alpine.data("fluxCommandInputClearable", () => ({
+    clear() {
+      let input = this.$el.closest("[data-flux-command-input]").querySelector("input");
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: false }));
+      input.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
+      input.focus();
+    }
+  }));
+  Alpine.data("fluxSelectSearchClearable", () => ({
+    clear() {
+      let input = this.$el.closest("[data-flux-select-search]").querySelector("input");
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: false }));
+      input.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
+      input.focus();
+    }
+  }));
+  Alpine.data("fluxPillboxSearchClearable", () => ({
+    clear() {
+      let input = this.$el.closest("[data-flux-pillbox-search]").querySelector("input");
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: false }));
+      input.dispatchEvent(new CustomEvent("clear", { bubbles: false }));
+      input.focus();
+    }
+  }));
 });
 
 // js/index.js
