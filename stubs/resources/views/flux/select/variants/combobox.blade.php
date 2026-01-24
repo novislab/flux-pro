@@ -4,6 +4,7 @@
     'clearable' => null,
     'multiple' => null,
     'invalid' => null,
+    'empty' => null,
     'input' => null,
     'size' => null,
     'name' => null,
@@ -38,8 +39,18 @@ $class = Flux::classes()
     <?php endif; ?>
 
     <flux:select.options>
-        {{ $slot}}
+        <?php if ($empty): ?>
+            <?php if (is_string($empty)): ?>
+                <flux:select.option.empty>{!! __($empty) !!}</flux:select.option.empty>
+            <?php else: ?>
+                {{ $empty }}
+            <?php endif; ?>
+        <?php else: ?>
+            <flux:select.option.empty when-loading="{!! __('Loading...') !!}">
+                {!! __('No results found') !!}
+            </flux:select.option.empty>
+        <?php endif; ?>
 
-        <flux:select.empty>{!! __('No results found') !!}</flux:select.empty>
+        {{ $slot }}
     </flux:select.options>
 </ui-select>

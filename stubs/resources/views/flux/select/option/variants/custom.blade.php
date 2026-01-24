@@ -4,6 +4,7 @@
     'filterable' => null,
     'indicator' => null,
     'loading' => null,
+    'label' => null,
     'value' => null,
 ])
 
@@ -37,7 +38,7 @@ if ($loading) {
         <flux:select.indicator :variant="$indicator" />
     </div>
 
-    {{ $slot }}
+    {{ $label ?? $slot }}
 
     <?php if ($loading): ?>
         <flux:icon.loading class="hidden [[data-flux-loading]>&]:block ms-auto text-zinc-400 [[data-flux-menu-item]:hover_&]:text-current" variant="micro" />

@@ -29,13 +29,19 @@ if (is_object($searchable)) $search = $searchable;
         <?php endif; ?>
 
         <ui-options class="max-h-[20rem] overflow-y-auto -me-[.3125rem] -mt-[.3125rem] pt-[.3125rem] pe-[.3125rem] -mb-[.3125rem] pb-[.3125rem] scroll-py-[.3125rem]">
-            {{ $slot }}
-
             <?php if ($empty): ?>
-                <ui-empty class="data-hidden:hidden">{{ $empty }}</ui-empty>
+                <?php if (is_string($empty)): ?>
+                    <flux:select.option.empty>{!! __($empty) !!}</flux:select.option.empty>
+                <?php else: ?>
+                    {{ $empty }}
+                <?php endif; ?>
             <?php else: ?>
-                <flux:select.empty>{!! __('No results found') !!}</flux:select.empty>
+                <flux:select.option.empty when-loading="{!! __('Loading...') !!}">
+                    {!! __('No results found') !!}
+                </flux:select.option.empty>
             <?php endif; ?>
+
+            {{ $slot }}
         </ui-options>
     </div>
 <?php endif; ?>
