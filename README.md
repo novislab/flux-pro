@@ -1,10 +1,23 @@
-# Flux Pro
+# Flux Pro v2.11.1
 
 The pro version of Flux, the official UI component library for Livewire.
 
 ## Installation
 
-### 1. Install via Composer
+### Option 1: One-Line Install (Recommended)
+
+Run this command from your Laravel project root:
+
+```bash
+curl -s https://raw.githubusercontent.com/novislab/flux-pro/main/install.sh | bash
+```
+
+This will automatically:
+- Add the repository to your `composer.json`
+- Install the package via Composer
+- Configure your CSS file with Flux Pro imports
+
+### Option 2: Install via Composer (Manual)
 
 Add the GitHub repository to your `composer.json`:
 
@@ -31,7 +44,7 @@ Or install directly from the repository:
 composer require livewire/flux-pro:dev-main
 ```
 
-### 2. Configure Tailwind CSS
+### Configure Tailwind CSS
 
 Add the Flux Pro styles and component paths to your `app.css`:
 
@@ -43,7 +56,7 @@ Add the Flux Pro styles and component paths to your `app.css`:
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 ```
 
-### 3. Publish Assets (Optional)
+### Publish Assets (Optional)
 
 If you need to customize the components, you can publish the views:
 
@@ -59,8 +72,8 @@ Once installed, you can use Flux Pro components in your Blade templates:
 <flux:editor wire:model="content" />
 
 <flux:command placeholder="Search commands...">
-    <flux:command.option>Option 1</flux:command.option>
-    <flux:command.option>Option 2</flux:command.option>
+    <flux:command.item>Option 1</flux:command.item>
+    <flux:command.item>Option 2</flux:command.item>
 </flux:command>
 
 <flux:chart>
@@ -69,63 +82,78 @@ Once installed, you can use Flux Pro components in your Blade templates:
     <flux:chart.legend />
 </flux:chart>
 
-<flux:table>
-    <flux:table.header>
-        <flux:table.heading>Name</flux:table.heading>
-        <flux:table.heading>Email</flux:table.heading>
-    </flux:table.header>
-    <flux:table.body>
-        @foreach($users as $user)
-            <flux:table.row>
-                <flux:table.cell>{{ $user->name }}</flux:table.cell>
-                <flux:table.cell>{{ $user->email }}</flux:table.cell>
-            </flux:table.row>
-        @endforeach
-    </flux:table.body>
-</flux:table>
+<flux:kanban>
+    <flux:kanban.column>
+        <flux:kanban.column.header>To Do</flux:kanban.column.header>
+        <flux:kanban.column.cards>
+            <flux:kanban.card>Task 1</flux:kanban.card>
+        </flux:kanban.column.cards>
+    </flux:kanban.column>
+</flux:kanban>
 
 <flux:date-picker wire:model="date" />
 
 <flux:time-picker wire:model="time" />
 
-<flux:autocomplete wire:model="selection" />
+<flux:autocomplete wire:model="selection">
+    <flux:autocomplete.item value="1">Item 1</flux:autocomplete.item>
+    <flux:autocomplete.item value="2">Item 2</flux:autocomplete.item>
+</flux:autocomplete>
 
 <flux:file-upload wire:model="files" />
 
-<flux:radio.variants.cards label="Option 1" />
+<flux:pillbox wire:model="tags">
+    <flux:pillbox.option value="tag1">Tag 1</flux:pillbox.option>
+    <flux:pillbox.option value="tag2">Tag 2</flux:pillbox.option>
+</flux:pillbox>
 
-<flux:card>
-    <flux:card.header>Card Title</flux:card.header>
-    <flux:card.body>Card content goes here</flux:card.body>
-</flux:card>
+<flux:slider wire:model="value" min="0" max="100" />
+
+<flux:select searchable>
+    <flux:select.option value="1">Option 1</flux:select.option>
+    <flux:select.option value="2">Option 2</flux:select.option>
+</flux:select>
 ```
 
 ## Available Components
 
-Flux Pro includes the following premium components:
+Flux Pro v2.11.1 includes the following premium components:
 
-- **Editor** - Rich text editor with toolbar
-- **Command** - Command palette interface
-- **Chart** - Advanced charting with area, line, axis, legend, and tooltip
+- **Editor** - Rich text editor with customizable toolbar
+- **Command** - Command palette interface for quick actions
+- **Chart** - Advanced charting with area, line, axis, legend, tooltip, and summary
+- **Kanban** - Drag-and-drop kanban board with columns and cards (NEW)
 - **Calendar** - Interactive calendar component
-- **Date Picker** - Date selection with calendar
+- **Date Picker** - Date selection with calendar popup
 - **Time Picker** - Time selection interface
-- **Autocomplete** - Autocomplete input field
-- **File Upload** - File upload with drag & drop
-- **Table** - Advanced table with pagination support
-- **Radio Variants** - Radio buttons in cards, pills, and button styles
-- **Checkbox** - Enhanced checkbox components
-- **Card** - Card container with variants
-- **Select** - Enhanced select dropdown
-- **Tab** - Tab navigation
-- **Popover** - Popover overlay
-- **Accordion** - Collapsible accordion
-- **Toast** - Toast notifications
-- **Pillbox** - Pill/tag selection interface
+- **Autocomplete** - Autocomplete input with async support
+- **File Upload** - File upload with drag & drop and dropzone
+- **Select** - Enhanced searchable select with combobox, listbox, and custom variants
+- **Pillbox** - Multi-select pill/tag selection interface with combobox variant
+- **Slider** - Range slider input (NEW)
+- **Composer** - Rich composition interface (NEW)
+- **Tab** - Tab navigation with panels
+- **Popover** - Popover overlay component
+- **Accordion** - Collapsible accordion sections
+- **Toast** - Toast notification system
+- **Context** - Context menu component
+
+## What's New in v2.11.1
+
+- Added **Kanban** component for drag-and-drop task boards
+- Added **Slider** component for range input
+- Added **Composer** component
+- Enhanced **Select** with indicator variants (check, checkbox, radio)
+- Enhanced **Pillbox** with combobox variant and option create/empty states
+- Updated dependencies: Livewire ^3.7.4|^4.0, Flux 2.11.1
 
 ## Requirements
 
 - PHP ^8.1
 - Laravel ^10.0|^11.0|^12.0
-- Livewire ^3.7.0|^4.0
-- Flux (base package)
+- Livewire ^3.7.4|^4.0
+- Flux (base package) 2.11.1
+
+## License
+
+Proprietary - See LICENSE.md for details.
