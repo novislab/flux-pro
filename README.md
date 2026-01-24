@@ -53,6 +53,7 @@ Add the Flux Pro styles and component paths to your `app.css`:
 @import "../../vendor/livewire/flux/dist/flux.css";
 
 @source '../views';
+@source '../../vendor/livewire/flux/stubs/**/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
 ```
 

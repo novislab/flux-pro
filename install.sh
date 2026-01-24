@@ -83,31 +83,38 @@ elif [ -f "resources/css/main.css" ]; then
 fi
 
 if [ -n "$CSS_FILE" ]; then
-    # Check if Flux Pro CSS is already imported
-    if grep -q "flux-pro/dist" "$CSS_FILE"; then
-        echo -e "${GREEN}Flux Pro CSS already configured in $CSS_FILE${NC}"
+    # Check if Flux CSS is already imported
+    if grep -q "livewire/flux/dist/flux.css" "$CSS_FILE"; then
+        echo -e "${GREEN}Flux CSS already configured in $CSS_FILE${NC}"
     else
         # Check if file has tailwindcss import
         if grep -q "@import \"tailwindcss\"" "$CSS_FILE" || grep -q "@import 'tailwindcss'" "$CSS_FILE"; then
             # Add after tailwindcss import
             sed -i '/@import.*tailwindcss/a @import "../../vendor/livewire/flux/dist/flux.css";' "$CSS_FILE"
-            echo -e "${GREEN}Added Flux Pro CSS import to $CSS_FILE${NC}"
+            echo -e "${GREEN}Added Flux CSS import to $CSS_FILE${NC}"
         else
             # Prepend to file
             echo -e '@import "../../vendor/livewire/flux/dist/flux.css";\n' | cat - "$CSS_FILE" > temp && mv temp "$CSS_FILE"
-            echo -e "${GREEN}Added Flux Pro CSS import to $CSS_FILE${NC}"
+            echo -e "${GREEN}Added Flux CSS import to $CSS_FILE${NC}"
         fi
+    fi
 
-        # Add source directive if not present
-        if ! grep -q "flux-pro/stubs" "$CSS_FILE"; then
-            echo '' >> "$CSS_FILE"
-            echo "@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';" >> "$CSS_FILE"
-            echo -e "${GREEN}Added Flux Pro source directive to $CSS_FILE${NC}"
-        fi
+    # Add base Flux source directive if not present
+    if ! grep -q "livewire/flux/stubs" "$CSS_FILE"; then
+        echo '' >> "$CSS_FILE"
+        echo "@source '../../vendor/livewire/flux/stubs/**/*.blade.php';" >> "$CSS_FILE"
+        echo -e "${GREEN}Added Flux source directive to $CSS_FILE${NC}"
+    fi
+
+    # Add Flux Pro source directive if not present
+    if ! grep -q "flux-pro/stubs" "$CSS_FILE"; then
+        echo "@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';" >> "$CSS_FILE"
+        echo -e "${GREEN}Added Flux Pro source directive to $CSS_FILE${NC}"
     fi
 else
     echo -e "${YELLOW}Could not find CSS file. Please manually add to your CSS:${NC}"
-    echo -e "${BLUE}@import \"../../vendor/livewire/flux-pro/dist/flux.css\";${NC}"
+    echo -e "${BLUE}@import \"../../vendor/livewire/flux/dist/flux.css\";${NC}"
+    echo -e "${BLUE}@source '../../vendor/livewire/flux/stubs/**/*.blade.php';${NC}"
     echo -e "${BLUE}@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';${NC}"
 fi
 
