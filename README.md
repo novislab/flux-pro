@@ -50,7 +50,7 @@ Add the Flux Pro styles and component paths to your `app.css`:
 
 ```css
 @import "tailwindcss";
-@import "../../vendor/livewire/flux-pro/dist/flux.css";
+@import "../../vendor/livewire/flux/dist/flux.css";
 
 @source '../views';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';

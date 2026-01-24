@@ -90,11 +90,11 @@ if [ -n "$CSS_FILE" ]; then
         # Check if file has tailwindcss import
         if grep -q "@import \"tailwindcss\"" "$CSS_FILE" || grep -q "@import 'tailwindcss'" "$CSS_FILE"; then
             # Add after tailwindcss import
-            sed -i '/@import.*tailwindcss/a @import "../../vendor/livewire/flux-pro/dist/flux.css";' "$CSS_FILE"
+            sed -i '/@import.*tailwindcss/a @import "../../vendor/livewire/flux/dist/flux.css";' "$CSS_FILE"
             echo -e "${GREEN}Added Flux Pro CSS import to $CSS_FILE${NC}"
         else
             # Prepend to file
-            echo -e '@import "../../vendor/livewire/flux-pro/dist/flux.css";\n' | cat - "$CSS_FILE" > temp && mv temp "$CSS_FILE"
+            echo -e '@import "../../vendor/livewire/flux/dist/flux.css";\n' | cat - "$CSS_FILE" > temp && mv temp "$CSS_FILE"
             echo -e "${GREEN}Added Flux Pro CSS import to $CSS_FILE${NC}"
         fi
 
