@@ -17,6 +17,7 @@ $classes = Flux::classes()
     {{ $attributes->class($classes) }}
     popover="manual"
     data-flux-popover
+    tabindex="-1"
 >
     {{ $slot }}
 </div>

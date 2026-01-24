@@ -5,5 +5,5 @@
 ])
 
 <template name="area" field="{{ $field }}" {{ $attributes->only(['curve']) }}>
-    <path fill="currentColor" {{ $attributes->except('curve') }}></path>
+    <path {{ $attributes->except('curve')->merge(['fill' => 'currentColor']) }}></path>
 </template>

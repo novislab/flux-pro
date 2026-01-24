@@ -35,6 +35,8 @@ $inputClasses = Flux::classes()
     ->add('w-[calc(2ch+2px)] text-center')
     ->add('rounded-sm')
     ->add('disabled:text-zinc-500 dark:disabled:text-zinc-400')
+    // The below reverts styles added by Tailwind Forms plugin
+    ->add('border-0 bg-transparent p-0 [font-size:inherit] [line-height:inherit] focus:ring-0 focus:ring-offset-0 focus:outline-[revert] focus:outline-offset-[revert]')
     ;
 
 $buttonClasses = Flux::classes()
@@ -50,9 +52,9 @@ $buttonClasses = Flux::classes()
 
 <div {{ $attributes->class($classes) }}>
     {{-- This click.stop prevents clicking on the inputs or the characters between from opening the popover... --}}
-    <div x-on:click.stop class="flex items-center" dir="ltr">
-        <input type="text" data-flux-hour-input class="{{ $inputClasses }}" />:
-        <input type="text" data-flux-minute-input class="{{ $inputClasses }}" />&nbsp;
+    <div x-on:click.stop class="flex items-center" dir="ltr" wire:ignore>
+        <input type="text" inputmode="numeric" data-flux-hour-input class="{{ $inputClasses }}" />:
+        <input type="text" inputmode="numeric" data-flux-minute-input class="{{ $inputClasses }}" />&nbsp;
         <input type="text" data-flux-meridiem-input class="{{ $inputClasses }}" />
     </div>
 
@@ -67,7 +69,7 @@ $buttonClasses = Flux::classes()
             square
             tabindex="-1"
             aria-label="Clear time"
-            x-on:click.prevent.stop="let timePicker = $el.closest('ui-time-picker'); timePicker.clear();"
+            x-on:click.prevent.stop="$el.closest('ui-time-picker').clear();"
             inset
         >
             <flux:icon.x-mark variant="micro" />

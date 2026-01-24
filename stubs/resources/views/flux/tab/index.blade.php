@@ -6,6 +6,7 @@
 @props([
     'iconTrailing' => null,
     'iconVariant' => null, // This is null as the default is set below depending on the tab variant...
+    'selected' => false,
     'variant' => null,
     'accent' => true,
     'name' => null,
@@ -71,7 +72,7 @@ if ($name) {
 }
 @endphp
 
-<flux:button-or-link :attributes="$attributes->class($classes)" data-flux-tab>
+<flux:button-or-link :attributes="$attributes->class($classes)->merge(['data-selected' => $selected, 'selected' => $selected])" data-flux-tab>
     <?php if (is_string($icon) && $icon !== ''): ?>
         <flux:icon :$icon :variant="$iconVariant" class="{!! $iconClasses !!}" />
     <?php elseif ($icon): ?>

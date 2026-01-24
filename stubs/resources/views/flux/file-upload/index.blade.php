@@ -8,7 +8,7 @@
 $classes = Flux::classes()
     // NOTE: We need to add relative positioning here to prevent odd overflow behaviors because of
     // "sr-only": https://github.com/tailwindlabs/tailwindcss/discussions/12429
-    ->add('@container relative')
+    ->add('relative')
     // The below reverts styles added by Tailwind Forms plugin
     ->add('border-0 p-0 bg-transparent')
     ;
