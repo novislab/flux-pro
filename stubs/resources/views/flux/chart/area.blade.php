@@ -1,3 +1,5 @@
+@blaze(fold: true, safe: ['field'])
+
 @aware(['field'])
 
 @props([

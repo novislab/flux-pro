@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @aware([ 'placeholder' ])
 
 @props([
@@ -7,7 +9,7 @@
 ])
 
 @php
-$loading = $attributes->whereStartsWith('wire:model.live')->isNotEmpty();
+$loading = ($wireModel = $attributes->wire('model')) && $wireModel->directive && $wireModel->hasModifier('live');
 
 if ($loading) {
     $attributes = $attributes->merge(['wire:loading.attr' => 'data-flux-loading']);

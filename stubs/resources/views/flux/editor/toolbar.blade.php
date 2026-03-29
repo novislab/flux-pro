@@ -1,3 +1,9 @@
+@blaze(fold: true, unsafe: [
+    // variant props
+    'kbd', 'icon', 'iconVariant',
+    'icon:variant',
+])
+
 @aware(['variant' => null])
 
 @props([

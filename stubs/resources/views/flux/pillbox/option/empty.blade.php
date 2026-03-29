@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @php
 $classes = Flux::classes()
     ->add('data-hidden:hidden block items-center px-2 py-1.5 w-full')

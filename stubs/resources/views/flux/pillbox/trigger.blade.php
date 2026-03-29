@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @aware([ 'placeholder', 'variant' ])
 
 @props([

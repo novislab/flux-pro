@@ -1,3 +1,11 @@
+@blaze(unsafe: [
+    // flux:with-field props
+    'name', 'label', 'badge',
+    'description', 'description:trailing',
+    'label:badge', 'label:aside', 'label:trailing',
+    'error:name', 'error:bag', 'error:message', 'error:icon', 'error:nested', 'error:deep',
+])
+
 @props([
     'selectableHeader' => null,
     'withConfirmation' => null,
@@ -89,8 +97,7 @@ if (isset($unavailable)) {
         data-flux-control
         data-flux-date-picker
         @if ($mode) mode="{{ $mode }}" @endif
-        months="1"
-        sm:months="{{ $months }}"
+        months="{{ $months }}"
         @if (isset($unavailable) && $unavailable !== '') unavailable="{{ $unavailable }}" @endif
         @if ($showName) name="{{ $name }}" @endif
         @if (isset($value)) value="{{ $value }}" @endif

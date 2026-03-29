@@ -1,4 +1,4 @@
-@blaze
+@blaze(fold: true, safe: ['header', 'heading', 'footer'])
 
 @props([
     'heading' => null,

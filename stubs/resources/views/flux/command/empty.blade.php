@@ -1,4 +1,4 @@
-@blaze
+@blaze(fold: true)
 
 <ui-option-empty class="data-hidden:hidden">
     <div class="flex items-center justify-center h-10">

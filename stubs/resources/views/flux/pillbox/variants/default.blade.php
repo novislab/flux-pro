@@ -1,3 +1,5 @@
+@blaze
+
 @php $searchPlaceholder ??= $attributes->pluck('search:placeholder'); @endphp
 
 @props([

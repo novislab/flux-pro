@@ -1,4 +1,4 @@
-@blaze
+@blaze(fold: true)
 
 @props([
     'icon' => 'cloud-arrow-up',

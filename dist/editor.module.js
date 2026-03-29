@@ -1,4 +1,5 @@
 // js/utils.js
+var styleSheet;
 function inject(callback) {
   let styles = callback({
     css: (strings, ...values) => `@layer base { ${strings.raw[0] + values.join("")} }`
@@ -9,9 +10,11 @@ function inject(callback) {
     document.head.appendChild(styleElement);
     return;
   }
-  let sheet = new CSSStyleSheet();
-  sheet.replaceSync(styles);
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  if (styleSheet === void 0) {
+    styleSheet = new CSSStyleSheet();
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet];
+  }
+  styleSheet.insertRule(styles);
 }
 function closest(el, condition) {
   let current = el;
@@ -119,6 +122,7 @@ inject(({ css }) => css`[data-flux-allow-scroll] { pointer-events: auto; }`);
 // js/element.js
 var UIElement = class extends HTMLElement {
   wasDisconnected = false;
+  onUnmounts = [];
   constructor() {
     super();
     this.boot?.();
@@ -137,9 +141,14 @@ var UIElement = class extends HTMLElement {
     queueMicrotask(() => {
       if (this.wasDisconnected) {
         this.unmount?.();
+        this.onUnmounts.forEach((i) => i());
+        this.onUnmounts = [];
       }
       this.wasDisconnected = false;
     });
+  }
+  onUnmount(callback) {
+    this.onUnmounts.push(callback);
   }
   mixin(func, options = {}) {
     return new func(this, options);
@@ -20609,9 +20618,7 @@ var UIEditorContent = class extends UIElement {
 };
 if (!customElements.get("ui-editor")) {
   element("editor", UIEditor);
-  inject(({ css }) => css`ui-editor { display: block; }`);
 }
 if (!customElements.get("ui-editor-content")) {
   element("editor-content", UIEditorContent);
-  inject(({ css }) => css`ui-editor-content { display: block; }`);
 }

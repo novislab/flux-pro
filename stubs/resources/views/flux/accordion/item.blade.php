@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @aware([ 'transition' ])
 
 @props([
@@ -30,6 +32,7 @@ $classes = Flux::classes()
     {{ $attributes->class($classes) }}
     x-data="{ open: {{ $state }} }"
     x-model.self="open"
+    @if ($disabled) disabled @endif
     data-flux-accordion-item
 >
     <?php if ($heading): ?>

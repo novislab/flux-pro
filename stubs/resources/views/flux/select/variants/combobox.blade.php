@@ -1,3 +1,5 @@
+@blaze
+
 @props([
     'placeholder' => null,
     'searchable' => null,

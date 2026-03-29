@@ -1,3 +1,5 @@
+@blaze
+
 @props([
     'clearable' => true,
     'closable' => null,
@@ -25,7 +27,7 @@ $name = $attributes->whereStartsWith('wire:model')->first();
 
 $invalid ??= ($name && $errors->has($name));
 
-$loading = $attributes->whereStartsWith('wire:model.live')->isNotEmpty();
+$loading = ($wireModel = $attributes->wire('model')) && $wireModel->directive && $wireModel->hasModifier('live');
 
 if ($loading) {
     $attributes = $attributes->merge(['wire:loading.attr' => 'data-flux-loading']);

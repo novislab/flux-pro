@@ -1,3 +1,5 @@
+@blaze
+
 @props([
     'selectableHeader' => null,
     'weekNumbers' => null,
@@ -69,8 +71,7 @@ if (isset($unavailable)) {
     {{ $attributes->class($class) }}
     data-flux-calendar
     @if ($mode) mode="{{ $mode }}" @endif
-    months="1"
-    sm:months="{{ $months }}"
+    months="{{ $months }}"
     @if (isset($unavailable) && $unavailable !== '') unavailable="{{ $unavailable }}" @endif
     @if ($showName) name="{{ $name }}" @endif
     @if (isset($value)) value="{{ $value }}" @endif

@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @props([
     'variant' => 'outline',
     'clearable' => null,
@@ -63,7 +65,7 @@ $buttonClasses = Flux::classes()
     <?php if ($clearable): ?>
         <flux:button
             as="div"
-            class="cursor-pointer [ui-time-picker:has([disabled])_&]:hidden"
+            class="cursor-pointer [ui-time-picker[data-empty]_&]:hidden [ui-time-picker:has([disabled])_&]:hidden"
             variant="subtle"
             :size="$size === 'sm' || $size === 'xs' ? 'xs' : 'sm'"
             square

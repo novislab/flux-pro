@@ -1,3 +1,5 @@
+@blaze(fold: true)
+
 @aware([ 'indicator' ])
 
 @props([
@@ -38,7 +40,7 @@ if ($loading) {
         <flux:select.indicator :variant="$indicator" />
     </div>
 
-    {{ $label ?? $slot }}
+    {{ $slot->isNotEmpty() ? $slot : $label }}
 
     <?php if ($loading): ?>
         <flux:icon.loading class="hidden [[data-flux-loading]>&]:block ms-auto text-zinc-400 [[data-flux-menu-item]:hover_&]:text-current" variant="micro" />

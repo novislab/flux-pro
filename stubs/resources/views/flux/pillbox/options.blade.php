@@ -1,3 +1,5 @@
+@blaze(fold: true, unsafe: ['search:placeholder'])
+
 @php $searchPlaceholder ??= $attributes->pluck('search:placeholder'); @endphp
 
 @aware([ 'searchable' ])

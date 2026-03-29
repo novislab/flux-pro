@@ -1,3 +1,11 @@
+@blaze(unsafe: [
+    // flux:with-field props
+    'name', 'label', 'badge',
+    'description', 'description:trailing',
+    'label:badge', 'label:aside', 'label:trailing',
+    'error:name', 'error:bag', 'error:message', 'error:icon', 'error:nested', 'error:deep',
+])
+
 @props([
     'name' => $attributes->whereStartsWith('wire:model')->first(),
     'actionsTrailing' => null,
